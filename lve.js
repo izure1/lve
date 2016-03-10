@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.0.0
+ * version 1.0.1
  * Made by izure | "LVE.js (C) izure 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -695,7 +695,7 @@ lve.fn.session.prototype.draw = function(){
  */
 lve.fn.session.prototype.use = function(){
 	lve_root.vars.usingCamera = Array.isArray(this.context) ? this.context[0] : this.context;
-	return lve_root.vars.usingCamera
+	return lve(lve_root.vars.usingCamera);
 };
 
 // 객체가 해당 사물을 쫒음
