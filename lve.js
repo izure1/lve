@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.0.1
+ * version 1.0.2
  * Made by izure | "LVE.js (C) izure 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -523,21 +523,6 @@ lve.fn.session.prototype.css = function(data){
 		for (var j in data)
 			item.style[j] = data[j] !== undefined ? data[j] : item.style[j];
 
-		/* 캔버스 text타입
-		 * width가 선언되지 않았을 시 자동으로 받아오기
-		 * 이는 최초 1회만 실행된다
-		 */
-		if (item.type == "text" && item.style.width == "auto"){
-			var canvas = lve_root.vars.initSetting.canvas;
-
-			lve_root.fn.canvasReset();
-
-			canvas.context.font = item.style.fontStyle + " " + item.style.fontWeight + " " + item.style.fontSize + "px " + item.style.fontFamily;
-			canvas.context.fillStyle = "transparent";
-
-			item.style.width = canvas.context.measureText(item.text).width;
-		}
-
 		lve(item).emit("moved");
 	}
 
@@ -550,6 +535,23 @@ lve.fn.session.prototype.draw = function(){
 		initSetting = lve_root.vars.initSetting;
 
 	lve_root.fn.canvasReset();
+
+
+	/* 캔버스 text타입
+	 * width가 선언되지 않았을 시 자동으로 받아오기
+	 * 이는 최초 1회만 실행된다
+	 */
+	if (this.type == "text" && this.style.width == "auto"){
+		var canvas = lve_root.vars.initSetting.canvas;
+
+		lve_root.fn.canvasReset();
+
+		canvas.context.font = this.style.fontStyle + " " + this.style.fontWeight + " " + this.style.fontSize + "px " + this.style.fontFamily;
+		canvas.context.fillStyle = "transparent";
+
+		this.style.width = canvas.context.measureText(this.text).width;
+	}
+
 
 	function _getRelativeSize(tarObject, cameraObject, tarObject_size){
 		return tarObject_size * initSetting.scaleDistance / (tarObject.style.position == "absolute" ? tarObject.style.perspective - lve_root.vars.usingCamera.style.perspective : tarObject.style.perspective);
