@@ -1,5 +1,5 @@
-# lve
-lve.js - Light Visualnovel Engine
+# LVE.js
+Light Visualnovel Engine
 
 ##![LOGO](https://drive.google.com/uc?id=0B5VYTQdG_I-XZDBHSzNCd2h6anc)
 
