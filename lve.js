@@ -1,6 +1,6 @@
 /* Linoaca Visualnovel Engine
- * version 1.0.2
- * Made by izure | "LVE.js (C) izure 2016. All rights reserved."
+ * version 1.1.0
+ * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
  * How to use?
@@ -188,6 +188,14 @@ lve_root = {
 			window.requestAnimationFrame(lve_root.fn.update);
 		},
 
+		adjustProperty: function(data){
+			return (data + "").replace(/-.|[A-Z](?=[a-z])/gm, function(v){
+				return "[" + v + "]";
+			}).toLowerCase().replace(/\[.\]/gmi, function(v){
+				return v.substr(1, 1).toUpperCase();
+			});
+		},
+
 		adjustJSON: function(data){
 			// 모든 스타일 parseFloat화 시키기
 			for (var i in data){
@@ -198,11 +206,7 @@ lve_root = {
 
 					// "-" 제거
 					// font-size | FONT-SIZE -> fontSize
-					i = (i + "").replace(/-.|[A-Z](?=[a-z])/gm, function(v){
-						return "[" + v + "]";
-					}).toLowerCase().replace(/\[.\]/gmi, function(v){
-						return v.substr(1, 1).toUpperCase();
-					});
+					i = lve_root.fn.adjustProperty(i);
 					data[i] = isNaN(parseFloat(data_origin)) ? data_origin : parseFloat(data_origin);
 				}
 			}
@@ -488,16 +492,23 @@ lve.fn.session.prototype.attr = function(data){
 	if (!data)
 		return !1;
 
-	data = lve_root.fn.adjustJSON(data);
+	// 속성 적용
+	if (typeof data == "object"){
+		data = lve_root.fn.adjustJSON(data);
 
-	for (var i in this.context){
-		var item = this.context[i];
+		for (var i in this.context){
+			var item = this.context[i];
 
-		for (var j in item)
-			item[j] = data[j] || item[j];
+			for (var j in item)
+				item[j] = data[j] || item[j];
+		}
+
+		return this;
 	}
 
-	return this;
+	// 속성 반환
+	else if (typeof data == "string")
+		return this.context[0][lve_root.fn.adjustProperty(data)];
 };
 
 
@@ -505,28 +516,35 @@ lve.fn.session.prototype.css = function(data){
 	if (!data)
 		return !1;
 
-	data = lve_root.fn.adjustJSON(data);
+	// 속성 적용
+	if (typeof data == "object"){
+		data = lve_root.fn.adjustJSON(data);
 
-	// absolute, fixed 이외의 position 속성값을 가질 경우
-	if (
-		data.position !== undefined &&
-		data.position != "absolute" &&
-		data.position != "fixed"
-	){
-		console.error("position:" + data.position + "은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.");
-		return !1;
+		// absolute, fixed 이외의 position 속성값을 가질 경우
+		if (
+			data.position !== undefined &&
+			data.position != "absolute" &&
+			data.position != "fixed"
+		){
+			console.error("position:" + data.position + "은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.");
+			return !1;
+		}
+
+		for (var i in this.context){
+			var item = this.context[i];
+
+			for (var j in data)
+				item.style[j] = data[j] !== undefined ? data[j] : item.style[j];
+
+			lve(item).emit("moved");
+		}
+
+		return this;
 	}
 
-	for (var i in this.context){
-		var item = this.context[i];
-
-		for (var j in data)
-			item.style[j] = data[j] !== undefined ? data[j] : item.style[j];
-
-		lve(item).emit("moved");
-	}
-
-	return this;
+	// 속성 반환
+	else if (typeof data == "string")
+		return this.context[0].style[lve_root.fn.adjustProperty(data)];
 };
 
 lve.fn.session.prototype.draw = function(){
@@ -535,22 +553,6 @@ lve.fn.session.prototype.draw = function(){
 		initSetting = lve_root.vars.initSetting;
 
 	lve_root.fn.canvasReset();
-
-
-	/* 캔버스 text타입
-	 * width가 선언되지 않았을 시 자동으로 받아오기
-	 * 이는 최초 1회만 실행된다
-	 */
-	if (this.type == "text" && this.style.width == "auto"){
-		var canvas = lve_root.vars.initSetting.canvas;
-
-		lve_root.fn.canvasReset();
-
-		canvas.context.font = this.style.fontStyle + " " + this.style.fontWeight + " " + this.style.fontSize + "px " + this.style.fontFamily;
-		canvas.context.fillStyle = "transparent";
-
-		this.style.width = canvas.context.measureText(this.text).width;
-	}
 
 
 	function _getRelativeSize(tarObject, cameraObject, tarObject_size){
@@ -575,6 +577,22 @@ lve.fn.session.prototype.draw = function(){
 		return !1;
 
 
+
+	/* 캔버스 text타입
+	 * width가 선언되지 않았을 시 자동으로 받아오기
+	 * 이는 최초 1회만 실행된다
+	 */
+	if (this.type == "text" && this.style.width == "auto"){
+		var canvas = lve_root.vars.initSetting.canvas;
+
+		canvas.context.font = this.style.fontStyle + " " + this.style.fontWeight + " " + this.style.fontSize + "px " + this.style.fontFamily;
+		canvas.context.fillStyle = "transparent";
+
+		this.style.width = canvas.context.measureText(this.text).width;
+		this.style.width_tmp = "auto";
+	}
+
+
 	// 카메라에서 보일 상대적 위치 생성
 	// position속성값이 fixed일 시 relative 값 고정
 	this.relative.perspective = this.style.perspective - lve_root.vars.usingCamera.style.perspective;
@@ -584,6 +602,13 @@ lve.fn.session.prototype.draw = function(){
 	this.relative.height = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.height || 1);
 	this.relative.left = _getRelativePosition(this, lve_root.vars.usingCamera, "left");
 	this.relative.bottom = _getRelativePosition(this, lve_root.vars.usingCamera, "bottom");
+
+
+	if (this.style.width_tmp == "auto"){
+		this.style.width = "auto";
+		delete this.style.width_tmp;
+	}
+
 
 	// 사물 그리기 예외처리
 	if (
