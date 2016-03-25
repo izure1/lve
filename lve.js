@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.1.0
+ * version 1.1.1
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -556,7 +556,7 @@ lve.fn.session.prototype.draw = function(){
 
 
 	function _getRelativeSize(tarObject, cameraObject, tarObject_size){
-		return tarObject_size * initSetting.scaleDistance / (tarObject.style.position == "absolute" ? tarObject.style.perspective - lve_root.vars.usingCamera.style.perspective : tarObject.style.perspective);
+		return tarObject_size * initSetting.scaleDistance / (tarObject.style.perspective - lve_root.vars.usingCamera.style.perspective);
 	}
 
 	function _getRelativePosition(tarObject, cameraObject, direction){
@@ -564,11 +564,12 @@ lve.fn.session.prototype.draw = function(){
 		var	pt_center = direction == "left" ? canvas.width / 2 : canvas.height / 2,
 			// 자기 자신의 width의 1/2만큼 빼서, 객체가 left의 정중앙에 올 수 있도록
 			fix_measure = direction == "left" ? tarObject.relative.width / 2 : tarObject.relative.height,
+			fix_cameraHeight = direction == "bottom" ? cameraObject.style.height : 0,
 			relativeSize,
 			m = direction == "left" ? 1 : -1;
 
 		// perspective에 따른 relative size계산
-		relativeSize = tarObject.style.position == "absolute" ? m * ((tarObject.style[direction] - cameraObject.style[direction]) * initSetting.scaleDistance / tarObject.relative.perspective) : -tarObject.style[direction];
+		relativeSize = m * ((tarObject.style[direction] - cameraObject.style[direction] - fix_cameraHeight) * initSetting.scaleDistance / tarObject.relative.perspective);
 
 		return pt_center - fix_measure + relativeSize;
 	}
@@ -595,13 +596,23 @@ lve.fn.session.prototype.draw = function(){
 
 	// 카메라에서 보일 상대적 위치 생성
 	// position속성값이 fixed일 시 relative 값 고정
-	this.relative.perspective = this.style.perspective - lve_root.vars.usingCamera.style.perspective;
-	this.relative.fontSize = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.fontSize);
-	this.relative.borderWidth = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.borderWidth);
-	this.relative.width = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.width);
-	this.relative.height = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.height || 1);
-	this.relative.left = _getRelativePosition(this, lve_root.vars.usingCamera, "left");
-	this.relative.bottom = _getRelativePosition(this, lve_root.vars.usingCamera, "bottom");
+	if (this.style.position == "absolute"){
+		this.relative.perspective = this.style.perspective - lve_root.vars.usingCamera.style.perspective;
+		this.relative.fontSize = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.fontSize);
+		this.relative.borderWidth = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.borderWidth);
+		this.relative.width = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.width);
+		this.relative.height = _getRelativeSize(this, lve_root.vars.usingCamera, this.style.height || 1);
+		this.relative.left = _getRelativePosition(this, lve_root.vars.usingCamera, "left");
+		this.relative.bottom = _getRelativePosition(this, lve_root.vars.usingCamera, "bottom");
+	} else{
+		this.relative.perspective = this.style.perspective;
+		this.relative.fontSize = this.style.fontSize;
+		this.relative.borderWidth = this.style.borderWidth;
+		this.relative.width = this.style.width;
+		this.relative.height = this.style.height;
+		this.relative.left = this.style.left;
+		this.relative.bottom = canvas.height - (this.style.bottom + this.style.height);
+	}
 
 
 	if (this.style.width_tmp == "auto"){
