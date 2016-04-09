@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.1.1
+ * version 1.1.2
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -71,10 +71,11 @@ lve_root = {
 		// 프레임이 업데이트 될 때
 		// 1초에 60번 작동
 		update: function(progress){
-			var	canvasContext = lve_root.vars.initSetting.canvas.context,
+			var canvasContext = lve_root.vars.initSetting.canvas.context,
+				deltaTime = lve_root.vars.initSetting.frameLimit / 60,
 				isNeedSort = Number(lve_root.vars.isNeedSort),
 				isNeedDraw = !1,
-				isDrawFrame = Math.floor(progress) % (60 / lve_root.vars.initSetting.frameLimit) == 0;
+				isDrawFrame = Math.floor(progress) * deltaTime % 1 == 0;
 
 			// 캔퍼스 초기화
 			if (isDrawFrame){
@@ -147,7 +148,8 @@ lve_root = {
 
 
 			// 프레임 제한
-			if (isDrawFrame){
+			if (isDrawFrame) {
+				console.log(1);
 				// z값이 변경되었을 시 재정렬
 				if (isNeedSort){
 					lve_root.vars.isNeedSort = !1;
@@ -556,22 +558,29 @@ lve.fn.session.prototype.draw = function(){
 
 
 	function _getRelativeSize(tarObject, cameraObject, tarObject_size){
-		return tarObject_size * initSetting.scaleDistance / (tarObject.style.perspective - lve_root.vars.usingCamera.style.perspective);
+		return tarObject_size * initSetting.scaleDistance / (tarObject.style.perspective - cameraObject.style.perspective);
 	}
 
 	function _getRelativePosition(tarObject, cameraObject, direction){
-		// 캔버스의 정중앙을 시작 좌표로 설정
-		var	pt_center = direction == "left" ? canvas.width / 2 : canvas.height / 2,
-			// 자기 자신의 width의 1/2만큼 빼서, 객체가 left의 정중앙에 올 수 있도록
-			fix_measure = direction == "left" ? tarObject.relative.width / 2 : tarObject.relative.height,
-			fix_cameraHeight = direction == "bottom" ? cameraObject.style.height : 0,
-			relativeSize,
-			m = direction == "left" ? 1 : -1;
+		var	pt_center = canvas.width / 2, // 캔버스의 정중앙을 시작 좌표로 설정
+			pt_fix = tarObject.relative.width / 2, // 자기 자신의 width의 1/2만큼 빼서, 객체가 left의 정중앙에 올 수 있도록
+			cameraHeight = 0,
+			m = 1,
+			relativeSize;
+
+		// direction이 bottom일 경우, 다시 초기화
+		// 이는 left일 시 계산하지 않고 넘어감으로써 성능향상을 이끔
+		if (direction == "bottom"){
+			pt_center = canvas.height / 2;
+			pt_fix = tarObject.relative.height;
+			cameraHeight = cameraObject.style.height;
+			m = -1;
+		}
 
 		// perspective에 따른 relative size계산
-		relativeSize = m * ((tarObject.style[direction] - cameraObject.style[direction] - fix_cameraHeight) * initSetting.scaleDistance / tarObject.relative.perspective);
+		relativeSize = m * ((tarObject.style[direction] - cameraObject.style[direction] - cameraHeight) * initSetting.scaleDistance / tarObject.relative.perspective);
 
-		return pt_center - fix_measure + relativeSize;
+		return pt_center - pt_fix + relativeSize;
 	}
 
 	if (!lve_root.vars.usingCamera)
