@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.1.2
+ * version 1.2.0
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -57,6 +57,8 @@ lve_root = {
 	vars: {
 		isStart: !1,
 		isNeedSort: !1,
+		isRunning: !0,
+		progress: 0,
 		primary: 1,
 		arr_object: [], // 객체 정보
 		arr_scene: {}, // 객체 정보 - 해당 씬에 담겨있는 객체
@@ -72,15 +74,26 @@ lve_root = {
 		// 1초에 60번 작동
 		update: function(progress){
 			var canvasContext = lve_root.vars.initSetting.canvas.context,
-				deltaTime = lve_root.vars.initSetting.frameLimit / 60,
+				interval = 1000 / lve_root.vars.initSetting.frameLimit,
+				now = Date.now(),
+				deltaTime = now - lve_root.vars.now,
 				isNeedSort = Number(lve_root.vars.isNeedSort),
 				isNeedDraw = !1,
-				isDrawFrame = Math.floor(progress) * deltaTime % 1 == 0;
+				isDrawFrame = deltaTime > interval;
 
-			// 캔퍼스 초기화
-			if (isDrawFrame){
+			// update 재귀호출
+			if (lve_root.vars.isRunning) {
+				window.requestAnimationFrame(lve_root.fn.update);
+				lve_root.vars.progress = progress;
+			}
+
+			// 설정 갱신
+			if (isDrawFrame) {
+				// 프레임 초기화
 				canvasContext.fillStyle = lve_root.vars.initSetting.backgroundColor;
 				canvasContext.fillRect(0, 0, lve_root.vars.initSetting.canvas.width, lve_root.vars.initSetting.canvas.height);
+				// frameLimit 갱신
+				lve_root.vars.now = now - (deltaTime % interval);
 			}
 			
 			// 해당 씬의 모든 객체 순회
@@ -149,7 +162,6 @@ lve_root = {
 
 			// 프레임 제한
 			if (isDrawFrame) {
-				console.log(1);
 				// z값이 변경되었을 시 재정렬
 				if (isNeedSort){
 					lve_root.vars.isNeedSort = !1;
@@ -185,9 +197,6 @@ lve_root = {
 			// 사용자가 초기설정시 extend 옵션을 사용했을 시
 			if (!!lve_root.vars.initSetting.userExtend && typeof lve_root.vars.initSetting.userExtend == "function")
 				lve.root_vars.initSetting.userExtend();
-
-			// update 재귀호출
-			window.requestAnimationFrame(lve_root.fn.update);
 		},
 
 		adjustProperty: function(data){
@@ -234,12 +243,13 @@ lve_root = {
  * 그 외, 객체에 지역설정이 되어있지 않을 시, 전역설정을 따릅니다
  */
 
-lve.init = function(data){
+lve.init = function (data) {
 	// 전역 설정
 	// 이는 객체의 지역설정으로도 쓰일 수 있음
 	data = lve_root.fn.adjustJSON(data);
-
 	var initSetting = lve_root.vars.initSetting;
+
+	lve_root.vars.now = Date.now();
 
 	initSetting.scaleDistance = data.scaleDistance !== undefined ? data.scaleDistance : initSetting.scaleDistance ? initSetting.scaleDistance : 150; // 객체과의 일반적 거리
 	initSetting.disappearanceSize = data.disappearanceSize !== undefined ? data.disappearanceSize : initSetting.disappearanceSize ? initSetting.disappearanceSize : undefined; // 소멸 크기
@@ -262,7 +272,7 @@ lve.init = function(data){
 	// 시스템 보조 선언
 	initSetting.success = !0;
 
-	if (!lve_root.vars.isStart){
+	if (!lve_root.vars.isStart) {
 		lve_root.vars.isStart = !0;
 		lve_root.fn.update(0);
 	}
@@ -270,13 +280,13 @@ lve.init = function(data){
 	return !0;
 },
 
-lve.canvasResize = function(){
+lve.canvasResize = function () {
 	lve_root.vars.initSetting.canvas.width = lve_root.vars.initSetting.canvas.context.canvas.width;
 	lve_root.vars.initSetting.canvas.height = lve_root.vars.initSetting.canvas.context.canvas.height;
 },
 
-lve.reltofix = function(p){
-	var	initSetting = lve_root.vars.initSetting,
+lve.reltofix = function (p) {
+	var initSetting = lve_root.vars.initSetting,
 		canvas = initSetting.canvas,
 		left = (canvas.width / 2) - p,
 		bottom = (canvas.height / 2) - p;
@@ -285,6 +295,20 @@ lve.reltofix = function(p){
 		left: left, bottom: bottom
 	};
 },
+
+lve.stop = function () {
+	lve_root.vars.isRunning = !1;
+},
+
+lve.pause = function(){
+	lve_root.vars.isRunning = !1;
+	lve_root.vars.progress = 0;
+}
+
+lve.start = function () {
+	lve_root.vars.isRunning = !0;
+	lve_root.fn.update(lve_root.vars.progress);
+}
 
 /* 레퍼런스된 lve에 시스템이 접근할 함수들
  * 사용자는 접근할 수 없음
