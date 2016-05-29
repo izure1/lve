@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.2.0
+ * version 1.2.1
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -58,7 +58,6 @@ lve_root = {
 		isStart: !1,
 		isNeedSort: !1,
 		isRunning: !0,
-		progress: 0,
 		primary: 1,
 		arr_object: [], // 객체 정보
 		arr_scene: {}, // 객체 정보 - 해당 씬에 담겨있는 객체
@@ -82,10 +81,8 @@ lve_root = {
 				isDrawFrame = deltaTime > interval;
 
 			// update 재귀호출
-			if (lve_root.vars.isRunning) {
+			if (lve_root.vars.isRunning)
 				window.requestAnimationFrame(lve_root.fn.update);
-				lve_root.vars.progress = progress;
-			}
 
 			// 설정 갱신
 			if (isDrawFrame) {
@@ -296,18 +293,15 @@ lve.reltofix = function (p) {
 	};
 },
 
-lve.stop = function () {
-	lve_root.vars.isRunning = !1;
-},
-
 lve.pause = function(){
 	lve_root.vars.isRunning = !1;
-	lve_root.vars.progress = 0;
 }
 
 lve.start = function () {
-	lve_root.vars.isRunning = !0;
-	lve_root.fn.update(lve_root.vars.progress);
+	if (!lve_root.vars.isRunning) {
+		lve_root.vars.isRunning = !0;
+		lve_root.fn.update(lve_root.vars.progress);
+	}
 }
 
 /* 레퍼런스된 lve에 시스템이 접근할 함수들
