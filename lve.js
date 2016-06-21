@@ -1,5 +1,5 @@
 /* Linoaca Visualnovel Engine
- * version 1.2.1
+ * version 1.3.0
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
@@ -464,6 +464,7 @@ lve.fn.session.prototype.create = function(data){
 		bottom: 0,
 		left: 0,
 		perspective: data.type == "camera" ? 0 : lve_root.vars.initSetting.scaleDistance,
+		opacity: 1
 	};
 	this.events = {};
 
@@ -663,11 +664,14 @@ lve.fn.session.prototype.draw = function(){
 		this.relative.bottom - this.relative.height > canvas.height || // 화면 위로 빠져나감
 		this.relative.width < initSetting.disappearanceSize || // width가 소멸크기보다 작음
 		this.relative.height < initSetting.disappearanceSize || // height가 소멸크기보다 작음
+		!this.style.opacity || // 투명도가 0일 경우
 		initSetting.disappearanceSight !== undefined && this.relative.perspective > initSetting.disappearanceSight // 소멸거리 지정 시 소멸거리보다 멀리있음
 	)
 		return !1;
 
 
+	// 투명도 설정 (Opacity)
+	ctx.globalAlpha = this.style.opacity;
 
 	switch(this.type){
 		case "image":
@@ -940,34 +944,16 @@ lve.fn.session.prototype.remove = function(){
 	// 객체정보배열 재생성
 	for (var i in this.context){
 		var item = this.context[i],
-			arr_newObject_object = [],
-			arr_newObject_scene = [];
+			item_index = {
+				object: arr_object.indexOf(item),
+				scene: arr_scene[item.scene].indexOf(item)
+			};
 
-		// 객체정보배열을 돌며 일괄 삭제
-		for (var j in arr_object)
-			if (arr_object[j].primary == item.primary)
-				// 해당 selectKeyword 삭제
-				delete lve_root.vars.selectorKeyword["[PRIMARY=" + item.primary + "]"];
-			else
-				arr_newObject_object.push(arr_object[j]);
+		// 객체 삭제
+		arr_object.splice(item_index.object, 1);
+		arr_scene[item.scene].splice(item_index.scene, 1);
 
-		lve_root.vars.arr_object = arr_newObject_object;
-
-		// 이후 객체정보배열을 돌며
-		// 삭제된 영역을 조각모음하여 배열크기 최소화
-		for (var j in arr_scene){
-			var arr_scene_item = arr_scene[j];
-
-			// 타켓이 소속된 씬이 아닐 경우 예외처리
-			if (j != item.scene)
-				continue;
-
-			for (var k in arr_scene_item)
-				if (arr_scene_item[k].primary != item.primary)
-					arr_newObject_scene.push(arr_scene_item[k]);
-
-			lve_root.vars.arr_scene[arr_scene_item[k].scene] = arr_newObject_scene;
-		}
+		delete lve_root.vars.selectorKeyword["[PRIMARY=" + item.primary + "]"];
 	}
 };
 
