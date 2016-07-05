@@ -1,11 +1,13 @@
 /* Linoaca Visualnovel Engine
- * version 1.4.0
+ * version 1.4.1
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
  * How to use?
  * → http://blog.linoaca.com
  */
+
+'use strict';
 
 var lve = function(name){
 	var	retArray = [];
@@ -71,7 +73,7 @@ lve_root = {
 		initSetting: {}, // 초기 설정
 		usingCamera: {}, // 사용중인 카메라
 		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됨
-		version: "1.4.0" // lve.js 버전
+		version: "1.4.1" // lve.js 버전
 	},
 	fn: {
 		// 프레임이 업데이트 될 때
@@ -86,7 +88,7 @@ lve_root = {
 
 				usingCamera = vars.usingCamera,
 				arr_object = vars.arr_object,
-				arr_scene = vars.arr_scene[usingCamera.scene],
+				arr_scene = vars.arr_scene[usingCamera.scene] || 0,
 
 				interval = 1000 / (usingCamera.frameLimit || initSetting.frameLimit),
 				now = Date.now(),
@@ -104,6 +106,7 @@ lve_root = {
 			// 설정 갱신
 			if (isDrawFrame) {
 				// 프레임 초기화
+				ctx.globalAlpha = 1;
 				ctx.fillStyle = usingCamera.backgroundColor || initSetting.backgroundColor;
 				ctx.fillRect(0, 0, canvas_elem.width, canvas_elem.height);
 				// frameLimit 갱신
@@ -112,7 +115,7 @@ lve_root = {
 			
 			// 해당 씬의 모든 객체 순회
 			// 다른 씬의 객체는 처리하지 않음
-			for (var i in arr_object){
+			for (var i = 0, length = arr_object.length; i < length; i++){
 				var	item = arr_object[i], // 해당 객체
 					attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 					attr_Length = item.ani_init.count_max ? Object.keys(item.ani_init.count_max).length : 0; // 해당 객체의 속성 갯수
@@ -123,7 +126,8 @@ lve_root = {
 
 				// 해당 객체가 animating일 경우
 				// j를 객체 속성으로 잡음
-				for (var j in item.ani_init) {
+				
+				for (var j in item.ani_init){
 					var item_style = item.style[j],
 						item_ani_init = item.ani_init,
 						item_ani_init_tar = item_ani_init[j];
@@ -164,7 +168,7 @@ lve_root = {
 						item.ani_init = {};
 						lve(item).emit("animateend");
 					}
-				}
+				};
 			}
 
 			// 프레임 제한
@@ -178,22 +182,22 @@ lve_root = {
 				}
 
 				// 사물 그려넣기
-				for (var k in arr_scene){
-					var item = arr_scene[k];
-
+				for (var j = 0, length = arr_scene.length; j < length; j++){
+					var item = arr_scene[j];
 					// 현재 카메라가 있는 현장의 사물만 그리기
 					item.draw();
 				}
 			}
 
 			// 콜백함수 체크
-			for (var i in vars.arr_callback){
-				var e = vars.arr_callback[i];
+			var j = vars.arr_callback.length;
+			while (j--){
+				var e = vars.arr_callback[j];
 
 				if (e.count > 0)
 					e.count--;
 				else {
-					vars.arr_callback.splice(i, 1);
+					vars.arr_callback.splice(j, 1);
 					e.fn(e.target);
 				}
 			}
@@ -844,7 +848,7 @@ lve.fn.session.prototype.attr = function(data){
 	if (typeof data == "object"){
 		data = lve_root.fn.adjustJSON(data);
 
-		for (var i in this.context){
+		for (var i = 0, length = this.context.length; i < length; i++){
 			var item = this.context[i];
 
 			for (var j in data){
@@ -887,7 +891,7 @@ lve.fn.session.prototype.css = function(data){
 			return !1;
 		}
 
-		for (var i in this.context){
+		for (var i = 0, length = this.context.length; i < length; i++){
 			var item = this.context[i];
 
 			for (var j in data)
@@ -1177,7 +1181,7 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 	// unfollow하여 팔로잉 객체의 팔로워 리스트에서 본인 제거
 	lve(this).unfollow();
 
-	for (var i in this.context){
+	for (var i = 0, length = this.context.length; i < length; i++){
 		var	item = this.context[i],
 			arr_follower = [];
 
@@ -1199,15 +1203,14 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 
 			// cssModified 이벤트를 걸어서 본인의 팔로워들의 위치 변화 (css)
 			lve(tarObj).on("cssModified", function(e){
-				for (var j in e.target.follow_init.follower){
+				for (var j = 0, length = e.target.follow_init.follower.length; j < length; j++){
 					var	follower = e.target.follow_init.follower[j],
+						follower_style = follower.style,
 						obj_follower = follower.follow_init.relative;
 
-					lve(follower).css({
-						left: tarObj.style.left + obj_follower.left,
-						bottom: tarObj.style.bottom + obj_follower.bottom,
-						perspective: tarObj.style.perspective + obj_follower.perspective
-					});
+					follower_style.left = tarObj.style.left + obj_follower.left;
+					follower_style.bottom = tarObj.style.bottom + obj_follower.bottom;
+					follower_style.perspective = tarObj.style.perspective + obj_follower.perspective;
 				}
 			}).emit("followed"); // followed 이벤트 발생
 		}
@@ -1218,7 +1221,8 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 
 // 객체가 해당 사물을 쫒음을 멈춤
 lve.fn.session.prototype.unfollow = function(){
-	for (var i in this.context){
+	var i = this.context.length;
+	while (i--){
 		// following 객체가 없을 경우
 		if (!this.context[i].follow_init.following)
 			return !1;
@@ -1250,7 +1254,7 @@ lve.fn.session.prototype.unfollow = function(){
 lve.fn.session.prototype.kick = function(tarObjName){
 	var arr_kickTar = lve(tarObjName).context;
 
-	for (var i in this.context){
+	for (var i = 0, length = this.context.length; i < length; i++){
 		var	item = this.context[i],
 			item_follower = item.follow_init.follower;
 
@@ -1280,7 +1284,7 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 		tmp_easing = typeof easing == "string" ? easing : "linear",
 		tmp_callback = arguments[arguments.length - 1];
 
-	for (var i in this.context){
+	for (var i = 0, length = this.context.length; i < length; i++){
 		var item = this.context[i],
 			ani_init = item.ani_init;
 
@@ -1323,7 +1327,7 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 
 // 해당 객체의 움직임을 멈춤
 lve.fn.session.prototype.stop = function(){
-	for (var i in this.context){
+	for (var i = 0, length = this.context.length; i < length; i++){
 		this.context[i].ani_init = {};
 
 		// animatestop 이벤트 발생
@@ -1341,12 +1345,14 @@ lve.fn.session.prototype.remove = function(){
 		arr_keyword = lve_root.vars.selectorKeyword,
 		canvas = lve_root.vars.initSetting.canvas.context.canvas;
 
-	var new_context = Object.assign({}, this.context);
-
 	// 객체정보배열을 돌면서 일괄삭제 후
 	// 객체정보배열 재생성
-	for (var i in new_context){
-		var item = new_context[i],
+	if (!this.context)
+		return !1;
+
+	var i = this.context.length;
+	while (i--){
+		var item = this.context[i],
 			item_index = {
 				arr_object: arr_object.indexOf(item),
 				arr_scene: arr_scene[item.scene].indexOf(item),
@@ -1361,7 +1367,8 @@ lve.fn.session.prototype.remove = function(){
 		}
 
 		// animate callback 함수 제거
-		for (var j in arr_callback) {
+		var j = arr_callback.length;
+		while (j--) {
 			var e = arr_callback[j];
 
 			if (e.target == item)
@@ -1442,7 +1449,7 @@ lve.fn.session.prototype.play = function () {
 	if (!lve_root.vars.isRunning)
 		return !1;
 
-	for (var i in this.context) {
+	for (var i = 0, length = this.context.length; i < length; i++) {
 		var item = this.context[i];
 
 		if (!item.src){
@@ -1464,7 +1471,7 @@ lve.fn.session.prototype.play = function () {
 
 // 객체의 재생을 멈춤
 lve.fn.session.prototype.pause = function () {
-	for (var i in this.context) {
+	for (var i = 0, length = this.context.length; i < length; i++) {
 		var item = this.context[i];
 
 		if (!item.element.pause) {
@@ -1481,7 +1488,7 @@ lve.fn.session.prototype.pause = function () {
 
 // 객체의 이벤트 발생
 lve.fn.session.prototype.emit = function(e){
-	for (var i in this.context){
+	for (var i = 0, length = this.context.length; i < length; i++){
 		var	item = this.context[i],
 			eObj = {
 				type: e,
