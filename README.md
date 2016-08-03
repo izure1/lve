@@ -8,6 +8,7 @@ lve.js는 html5의 canvas로 구현 가능한 비주얼노벨 엔진입니다.
 
 좀 더 빠른 최신버전 업데이트는
 [개발자 블로그](http://blog.linoaca.com/220650672644)에서 확인하실 수 있습니다.
+[개발자 센터](http://cafe.naver.com/lvejs)에서 당신이 원하는 정보를 찾을 수 있습니다.
 
 ## 기본 사용법 - 설정하기
 ```javascript
