@@ -1,15 +1,20 @@
 /* Linoaca Visualnovel Engine
- * version 1.4.1
+ * version 1.5.0
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
  *
  * How to use?
  * → http://blog.linoaca.com
+ * → http://cafe.naver.com/lvejs
  */
 
 'use strict';
 
 var lve = function(name){
+	// Ex. lve()
+	if (!name)
+		return !1;
+
 	var	retArray = [];
 
 	// 문자열로 검색할 때
@@ -62,29 +67,29 @@ var lve = function(name){
 lve_root = {
 	vars: {
 		isStart: !1,
-		isNeedSort: !1,
+		isNeedSort: 0,
 		isRunning: !0,
 		primary: 1,
 		arr_object: [], // 객체 정보
 		arr_scene: {}, // 객체 정보 - 해당 씬에 담겨있는 객체
 		arr_callback: [], // 콜백 스택 - callback함수를 저장하는 변수
 		arr_type: ["camera", "image", "circle", "square", "text", "video"], // 객체 속성
-		arr_event: ["animatestart", "animateend", "animatestop", "cssModified", "attrModified", "follow", "unfollow", "followed", "unfollowed", "kick", "kicked", "play", "pause", "ended"], // 객체 이벤트
+		arr_event: ["animatestart", "animateend", "animatestop", "cssModified", "attrModified", "animateModified", "follow", "followUpdate", "unfollow", "followed", "unfollowed", "kick", "kicked", "play", "pause", "ended", "click", "dblclick", "mousedown", "mouseup"], // 객체 이벤트
 		initSetting: {}, // 초기 설정
 		usingCamera: {}, // 사용중인 카메라
 		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됨
-		version: "1.4.1" // lve.js 버전
+		version: "1.5.0" // lve.js 버전
 	},
 	fn: {
 		// 프레임이 업데이트 될 때
 		// 1초에 60번 작동
-		update: function(progress){
+		update: function(){
 			var vars = lve_root.vars,
 				initSetting = vars.initSetting,
 
 				canvas = initSetting.canvas,
 				ctx = lve_root.vars.initSetting.canvas.context,
-				canvas_elem = ctx.canvas,
+				canvas_elem = canvas.element,
 
 				usingCamera = vars.usingCamera,
 				arr_object = vars.arr_object,
@@ -94,28 +99,38 @@ lve_root = {
 				now = Date.now(),
 				deltaTime = now - vars.now,
 
-				isNeedSort = Number(vars.isNeedSort),
-				isNeedDraw = !1,
+				isNeedSort = vars.isNeedSort,
 				isDrawFrame = deltaTime > interval;
-
 
 			// update 재귀호출
 			if (vars.isRunning)
 				window.requestAnimationFrame(lve_root.fn.update);
 
+			// 사용자가 초기설정시 extendStart 옵션을 사용했을 시
+			if (!!initSetting.userExtendStart && typeof initSetting.userExtendStart == "function")
+				initSetting.userExtendStart(lve_root);
+
 			// 설정 갱신
 			if (isDrawFrame) {
 				// 프레임 초기화
+				ctx.restore();
+				ctx.save();
+
 				ctx.globalAlpha = 1;
 				ctx.fillStyle = usingCamera.backgroundColor || initSetting.backgroundColor;
+				ctx.clearRect(0, 0, canvas_elem.width, canvas_elem.height);
 				ctx.fillRect(0, 0, canvas_elem.width, canvas_elem.height);
 				// frameLimit 갱신
-				lve_root.vars.now = now - (deltaTime % interval);
+				vars.now = now - (deltaTime % interval);
+
+				// 사용자가 초기설정시 extendDrawStart 옵션을 사용했을 시
+				if (!!initSetting.userExtendDrawStart && typeof initSetting.userExtendDrawStart == "function")
+					initSetting.userExtendDrawStart(lve_root);
 			}
 			
 			// 해당 씬의 모든 객체 순회
 			// 다른 씬의 객체는 처리하지 않음
-			for (var i = 0, length = arr_object.length; i < length; i++){
+			for (var i = 0, len_i = arr_object.length; i < len_i; i++){
 				var	item = arr_object[i], // 해당 객체
 					attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 					attr_Length = item.ani_init.count_max ? Object.keys(item.ani_init.count_max).length : 0; // 해당 객체의 속성 갯수
@@ -126,7 +141,6 @@ lve_root = {
 
 				// 해당 객체가 animating일 경우
 				// j를 객체 속성으로 잡음
-				
 				for (var j in item.ani_init){
 					var item_style = item.style[j],
 						item_ani_init = item.ani_init,
@@ -134,24 +148,27 @@ lve_root = {
 
 					// 해당 속성이 animating 아닐 시 예외
 					if (item_ani_init_tar === undefined)
-						continue;
+						return !1;
 
 					// 해당 속성에 animate값 저장
 					if (
 						item_ani_init_tar != item_ani_init.origin[j] &&
 						item_ani_init.count[j] < item_ani_init.count_max[j]
 					){
-						isNeedDraw = !0;
 						item.style[j] = item.getEasingData(j);
 						item_ani_init.count[j]++;
+						lve(item).emit("animateModified");
 					}
 					
 					// style.perspective 값이 변경되었을 시
 					// isNeedSort 설정
-					if (item_ani_init_tar != item_ani_init.origin[j] && item_ani_init.count[j] < item_ani_init.count_max[j]) {
+					if (
+						j == "perspective" &&
+						item_ani_init_tar != item_ani_init.origin[j] &&
+						item_ani_init.count[j] < item_ani_init.count_max[j]
+					)
 						// 움직인 것이 카메라일 경우는 예외
-						isNeedSort += item.type != "camera" ? 1 : 0;
-					}
+						isNeedSort += (item.type != "camera") - 0;
 
 					// 객체의 해당 속성이 animated 되었을 때
 					if (item_ani_init.count[j] >= item_ani_init.count_max[j]) {
@@ -168,24 +185,6 @@ lve_root = {
 						item.ani_init = {};
 						lve(item).emit("animateend");
 					}
-				};
-			}
-
-			// 프레임 제한
-			if (isDrawFrame) {
-				// z값이 변경되었을 시 재정렬
-				if (isNeedSort){
-					vars.isNeedSort = !1;
-					arr_object.sort(function(a, b){
-						return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
-					});
-				}
-
-				// 사물 그려넣기
-				for (var j = 0, length = arr_scene.length; j < length; j++){
-					var item = arr_scene[j];
-					// 현재 카메라가 있는 현장의 사물만 그리기
-					item.draw();
 				}
 			}
 
@@ -202,9 +201,46 @@ lve_root = {
 				}
 			}
 
-			// 사용자가 초기설정시 extend 옵션을 사용했을 시
-			if (!!initSetting.userExtend && typeof initSetting.userExtend == "function")
-				initSetting.userExtend();
+			// 프레임 제한
+			if (isDrawFrame) {
+				// z값이 변경되었을 시 재정렬
+				if (isNeedSort){
+					vars.isNeedSort = 0;
+					arr_scene.sort(function(a, b){
+						return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
+					});
+				}
+
+				// 사물 그려넣기
+				for (var j = 0, len_j = arr_scene.length; j < len_j; j++){
+					var item = arr_scene[j];
+					// 현재 카메라가 있는 현장의 사물만 그리기
+					item.draw();
+				}
+
+				// 사용자가 초기설정시 extendDrawEnd 옵션을 사용했을 시
+				if (!!initSetting.userExtendDrawEnd && typeof initSetting.userExtendDrawEnd == "function")
+					initSetting.userExtendDrawEnd(lve_root);
+			}
+
+			// 사용자가 초기설정시 extendEnd 옵션을 사용했을 시
+			if (!!initSetting.userExtendEnd && typeof initSetting.userExtendEnd == "function")
+				initSetting.userExtendEnd(lve_root);
+		},
+
+		copyObject: function(data){
+			var ret = {};
+
+			for (var i in data){
+				var val = data[i];
+
+				if (typeof val == "object" || typeof val == "array")
+					ret[i] = JSON.parse(JSON.stringify(val))
+				else
+					ret[i] = val;
+			}
+
+			return ret;
 		},
 
 		adjustProperty: function(data){
@@ -215,9 +251,9 @@ lve_root = {
 			});
 		},
 
-		adjustJSON: function(data){
+		adjustJSON: function(data, obj){
 			// 새로운 객체로 생성
-			var tmp_data = JSON.parse(JSON.stringify(data));
+			var tmp_data = lve_root.fn.copyObject(data);
 
 			// 모든 스타일 parseFloat화 시키기
 			for (var i in tmp_data){
@@ -228,13 +264,18 @@ lve_root = {
 				// "-" 제거
 				// font-size | FONT-SIZE -> fontSize
 				i = lve_root.fn.adjustProperty(i);
-				tmp_data[i] = isNaN(parseFloat(data_origin)) ? data_origin : parseFloat(data_origin);
+
+				// 속성값이 함수형일 경우
+				if (typeof data_origin == "function" && obj)
+					data_origin = data_origin(obj);
+
+				tmp_data[i] = isNaN(data_origin - 0) ? data_origin : parseFloat(data_origin);
 			}
 
 			return tmp_data;
 		},
 
-		canvasReset: function (opacity = 1) {
+		canvasReset: function (opacity = 1, blur = 0) {
 			var ctx = lve_root.vars.initSetting.canvas.context;
 
 			ctx.restore();
@@ -242,6 +283,7 @@ lve_root = {
 			ctx.beginPath();
 
 			ctx.globalAlpha = opacity;
+			ctx.filter = blur > 0 ? "blur(" + blur + "px)" : "none";
 		},
 
 		getRelativeSize: function (tarObj, tarObj_size) {
@@ -259,7 +301,7 @@ lve_root = {
 
 				cameraObject = lve_root.vars.usingCamera,
 				scaleDistance = lve_root.vars.usingCamera.scaleDistance || lve_root.vars.initSetting.scaleDistance,
-				canvas_elem = lve_root.vars.initSetting.canvas.context.canvas; // Nagative. top이 아니라, bottom으로 인한 반전값
+				canvas_elem = lve_root.vars.initSetting.canvas.element; // Nagative. top이 아니라, bottom으로 인한 반전값
 
 			// direction이 left일 경우
 			if (direction == "left"){
@@ -299,6 +341,46 @@ lve_root = {
 			};
 
 			tmpObj.src = tarObj.src;
+		},
+
+		eventfilter: function(e){
+			var vars = lve_root.vars,
+				initSetting = vars.initSetting,
+				usingCamera = vars.usingCamera || {},
+				canvas_elem = initSetting.canvas.element,
+				arr_scene = vars.arr_scene[usingCamera.scene],
+				len_i = arr_scene.length,
+				ox = e.offsetX,
+				oy = e.offsetY;
+
+			vars.isNeedSort = 0;
+			arr_scene.sort(function(a, b){
+				return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
+			});
+
+			while (len_i--){
+				var item = arr_scene[len_i],
+					_style = item.style,
+					_relative = item.relative,
+					_left = _relative.left,
+					_top = _relative.bottom;
+
+				// 예외 처리
+				if (
+					item.type == "camera" || // 카메라 객체일 경우
+					_style.pointerEvents == "none" || // pointer-events 속성값이 none일 경우
+					ox < _left || // 객체가 우측에 있을 경우
+					ox > (_left + _relative.width) || // 객체가 좌측에 있을 경우
+					oy < _top || // 객체가 아래에 있을 경우
+					oy > (_top + _relative.height) // 객체가 위에 있을 경우
+				)
+					continue;
+
+				// 이벤트 발동조건이 일치할 때
+				// 현재 카메라 기준으로 perspective가 가장 근접한 객체에 최초 발동
+				lve(item).emit(e.type, e);
+				break;
+			}
 		}
 	}
 };
@@ -316,8 +398,8 @@ lve_root = {
 lve.init = function (data) {
 	// 전역 설정
 	// 이는 객체의 지역설정으로도 쓰일 수 있음
-	data = lve_root.fn.adjustJSON(data);
-	var initSetting = lve_root.vars.initSetting;
+	var data = lve_root.fn.adjustJSON(data, initSetting),
+		initSetting = lve_root.vars.initSetting;
 
 	lve_root.vars.now = Date.now();
 
@@ -329,20 +411,37 @@ lve.init = function (data) {
 
 	// 필수 선언
 	// 이는 객체의 지역설정으로 쓰일 수 없음
-	initSetting.canvas = initSetting.canvas || {};
-	initSetting.canvas.context = data.canvas !== undefined ? data.canvas.getContext("2d") : initSetting.canvas.context ? initSetting.canvas.context : undefined;
+	if (data.canvas){
+		initSetting.canvas = {};
+		initSetting.canvas.context = data.canvas.getContext("2d");
+		initSetting.canvas.element = data.canvas;
+	}
 
 	lve_root.fn.canvasReset();
 
 	// 사용자 보조 선언
-	initSetting.userExtend = data.extend;
+	initSetting.userExtendStart = data.extendStart || initSetting.userExtendStart;
+	initSetting.userExtendEnd = data.extendEnd || initSetting.userExtendEnd;
+	initSetting.userExtendDrawStart = data.extendDrawStart || initSetting.userExtendDrawStart;
+	initSetting.userExtendDrawEnd = data.extendDrawEnd || initSetting.userExtendDrawEnd;
 
 	// 시스템 보조 선언
 	initSetting.success = !0;
 
 	if (!lve_root.vars.isStart) {
 		lve_root.vars.isStart = !0;
-		lve_root.fn.update(0);
+		lve_root.fn.update();
+
+		var ce = initSetting.canvas.element,
+			fn = lve_root.fn;
+
+		// 캔버스 이벤트 할당
+		ce.onclick =
+		ce.ondblclick =
+		ce.onmousedown =
+		ce.onmouseup = function(e){
+			fn.eventfilter(e);
+		};
 	}
 
 	return !0;
@@ -350,7 +449,7 @@ lve.init = function (data) {
 
 lve.reltofix = function (p) {
 	var initSetting = lve_root.vars.initSetting,
-		canvas = initSetting.canvas.context.canvas,
+		canvas = initSetting.canvas.element,
 		left = (canvas.width / 2) - p,
 		bottom = (canvas.height / 2) - p;
 
@@ -365,7 +464,7 @@ lve.pause = function () {
 
 	vars.isRunning = !1;
 
-	for (var i in arr_object) {
+	for (var i = 0, len_i = arr_object.length; i < len_i; i++) {
 		var item = arr_object[i],
 			item_elem = item.element;
 
@@ -389,9 +488,9 @@ lve.play = function () {
 	// 게임이 정지되어 있었을 경우 재생
 	if (!vars.isRunning) {
 		vars.isRunning = !0;
-		lve_root.fn.update(vars.progress);
+		lve_root.fn.update();
 
-		for (var i in arr_object) {
+		for (var i = 0, len_i = arr_object.length; i < len_i; i++) {
 			var item = arr_object[i],
 				item_elem = item.element;
 
@@ -403,7 +502,7 @@ lve.play = function () {
 			var isPlayed = item_elem.getAttribute("data-played");
 
 			if (isPlayed) {
-				// 객체 일시중지
+				// 일시중지 중이던 객체 재생
 				item_elem.play();
 				item_elem.removeAttribute("data-played");
 			}
@@ -413,61 +512,61 @@ lve.play = function () {
 
 lve.fullScreen = function (extend) {
 	// 캔버스 이벤트 등록
-	var canvas = lve_root.vars.initSetting.canvas.context.canvas,
+	var canvas_elem = lve_root.vars.initSetting.canvas.element,
 		// 증가 비율이 짧은 면을 기준으로 잡음
 		screenScale = [
-			window.screen.availWidth / canvas.width,
-			window.screen.availHeight / canvas.height
+			window.screen.availWidth / canvas_elem.width,
+			window.screen.availHeight / canvas_elem.height
 		].sort(function (a, b) {
 			return a - b;
 		})[0],
 
 		// 이벤트 함수
 		fn_eventExit = function () {
-			var isFullScreen = canvas.getAttribute("data-fullscreen");
+			var isFullScreen = canvas_elem.getAttribute("data-fullscreen");
 
 			// 현재 전체화면 모드라면
 			if (isFullScreen) {
-				canvas.removeAttribute("data-fullscreen");
+				canvas_elem.removeAttribute("data-fullscreen");
 
 				if (extend)
-					canvas.style.transform = "";
+					canvas_elem.style.transform = "";
 
-				canvas.removeEventListener("fullscreenchange", fn_eventExit);
-				canvas.removeEventListener("webkitfullscreenchange", fn_eventExit);
-				canvas.removeEventListener("mozscreenchange", fn_eventExit);
-				canvas.removeEventListener("msscreenchange", fn_eventExit);
+				canvas_elem.removeEventListener("fullscreenchange", fn_eventExit);
+				canvas_elem.removeEventListener("webkitfullscreenchange", fn_eventExit);
+				canvas_elem.removeEventListener("mozscreenchange", fn_eventExit);
+				canvas_elem.removeEventListener("msscreenchange", fn_eventExit);
 			}
 				// 진입 시
 			else {
-				canvas.setAttribute("data-fullscreen", true);
+				canvas_elem.setAttribute("data-fullscreen", true);
 
 				// 확장을 허용했을 시
 				if (extend)
-					canvas.style.transform = "scale(" + screenScale + ")";
+					canvas_elem.style.transform = "scale(" + screenScale + ")";
 			}
 		};
 
-	if (!canvas || canvas.getAttribute("data-fullscreen") == "true")
+	if (!canvas_elem || canvas_elem.getAttribute("data-fullscreen") == "true")
 		return !1;
 
 	// 이벤트 등록
-	canvas.addEventListener("fullscreenchange", fn_eventExit);
-	canvas.addEventListener("webkitfullscreenchange", fn_eventExit);
-	canvas.addEventListener("mozscreenchange", fn_eventExit);
-	canvas.addEventListener("msscreenchange", fn_eventExit);
+	canvas_elem.addEventListener("fullscreenchange", fn_eventExit);
+	canvas_elem.addEventListener("webkitfullscreenchange", fn_eventExit);
+	canvas_elem.addEventListener("mozscreenchange", fn_eventExit);
+	canvas_elem.addEventListener("msscreenchange", fn_eventExit);
 
 	try {
-		canvas.requestFullScreen();
+		canvas_elem.requestFullScreen();
 	} catch (e) {
 		try {
-			canvas.webkitRequestFullScreen();
+			canvas_elem.webkitRequestFullScreen();
 		} catch (e) {
 			try {
-				canvas.mozRequestFullScreen();
+				canvas_elem.mozRequestFullScreen();
 			} catch (e) {
 				try {
-					canvas.msRequestFullScreen();
+					canvas_elem.msRequestFullScreen();
 				} catch (e) {
 					return !1;
 				}
@@ -483,30 +582,23 @@ lve.data = function (data) {
 		if (typeof data != "object")
 			return !1;
 
-		var member = Object.keys(data);
-
-		for (var i in member) {
-			var keyword = member[i];
-
-			lve_root.vars[keyword] = data[keyword];
-		}
+		for (var i in data)
+			lve_root.vars[i] = data[i];
 
 		return data;
 	}
 },
 
 lve.calc = function(data = {}){
-	
-	data = lve_root.fn.adjustJSON(data);
-
-	var tmp_data = JSON.parse(JSON.stringify(data)),
+	var data = lve_root.fn.adjustJSON(data),
+		tmp_data = lve_root.fn.copyObject(data),
 		// 전역변수 지역화
 		vars = lve_root.vars,
 		initSetting = vars.initSetting,
 		usingCamera = vars.usingCamera,
 		scaleDistance = (usingCamera.scaleDistance || initSetting.scaleDistance);
 
-	data.perspective = data.perspective === undefined ? scaleDistance : data.perspective === 0 ? 0 : data.perspective;
+	data.perspective = data.perspective === undefined ? scaleDistance : data.perspective;
 	data.width = data.width || 0;
 	data.height = data.height || 0;
 	data.left = data.left || 0;
@@ -523,7 +615,7 @@ lve.calc = function(data = {}){
 		// getRelativePosition 리스트
 		arr_positionList = ["left", "bottom"],
 		// 상수 속성 리스트
-		arr_fixedProp = ["rotate", "opacity"],
+		arr_fixedProp = ["rotate", "opacity", "gradientDirection", "scale"],
 
 		_getRelativeSize = lve_root.fn.getRelativeSize;
 
@@ -535,7 +627,7 @@ lve.calc = function(data = {}){
 		if (!isPosition)
 			// 숫자식만 계산함
 			if (!isNaN(
-				parseFloat(data[i])
+				data[i] - 0
 			))
 				tmp_ret[i] = _getRelativeSize(tmp_object, data[i]);
 			// 숫자식이 아닐 경우
@@ -561,22 +653,26 @@ lve.calc = function(data = {}){
 				tmp_ret[i] *= fixScale * fixScale;
 	}
 
-	var canvas_elem = initSetting.canvas.context.canvas;
+	var canvas_elem = initSetting.canvas.element;
 
 	// 좌표값 적용
-	arr_positionList.forEach(function(i){
-		tmp_ret[i] *= fixScale;
-	});
+	for (var i = 0, len_i = arr_positionList.length; i < len_i; i++){
+		var key = arr_positionList[i];
+
+		tmp_ret[key] *= fixScale;
+	}
 
 	// 사용자가 요청한 속성만 담음
-	for (var i in tmp_data)
+	for (var i in tmp_ret)
 		ret[i] = tmp_ret[i];
 
 	// 상수 속성 수치 보정
-	arr_fixedProp.forEach(function(i){
-		if (tmp_ret[i] !== undefined)
-			ret[i] = tmp_data[i];
-	});
+	for (var i = 0, len_i = arr_fixedProp.length; i < len_i; i++){
+		var key = arr_fixedProp[i];
+
+		if (tmp_ret[key] !== undefined)
+			ret[key] = tmp_data[key];
+	}
 
 	// 사용자가 등록한 perspective값 등록
 	ret.perspective = data.perspective;
@@ -593,7 +689,7 @@ lve.fn = {
 	 */
 	session: function(selector, context){
 		this.name = selector;
-		this.context = context;
+		this.context = context || {};
 	}
 };
 
@@ -713,21 +809,52 @@ lve.fn.session.prototype.create = function(data){
 		return !1;
 	}
 
-	data = lve_root.fn.adjustJSON(data);
-
-
-	var self = this,
-		arr_autoList = {
-			text: ["width"],
-			image: ["width", "height"]
+	var data = lve_root.fn.adjustJSON(data, this),
+		self = this,
+		arr_autoList_1 = {
+			text: {
+				property: ["width"],
+				default: "auto"
+			},
+			image: {
+				property: ["width", "height"],
+				default: "not_ready"
+			}
+		},
+		arr_autoList_2 = {
+			circle: {
+				property: ["gradientType"],
+				default: "radial"
+			},
+			square: {
+				property: ["gradientType"],
+				default: "linear"
+			},
+			text: {
+				property: ["gradientType"],
+				default: "linear"
+			}
 		},
 		vars = lve_root.vars;
+
+	function _setAuto(arr){
+		for (var i in arr){
+			if (self.type == i){
+				var arr_tarProp = arr[i].property;
+
+				for (var j = 0, len_j = arr_tarProp.length; j < len_j; j++)
+					self.style[arr_tarProp[j]] = arr[i].default;
+			}
+		}
+	}
 
 	this.primary = lve_root.vars.primary++;
 	this.type = data.type.toLowerCase();
 	this.scene = data.scene || "main";
 	this.src = data.src;
 	this.text = data.text;
+	this.className = "";
+	this.focus = !1;
 	this.follow_init = {
 		follower: [],
 		following: undefined,
@@ -753,23 +880,21 @@ lve.fn.session.prototype.create = function(data){
 		left: 0,
 		perspective: data.type == "camera" ? 0 : (vars.usingCamera.scaleDistance || vars.initSetting.scaleDistance),
 		opacity: 1,
-		rotate: 0
+		rotate: 0,
+		scale: 1,
+		blur: 0,
+		gradientDirection: 0,
+		gradientType: "",
+		gradient: {},
+		pointerEvents: "auto"
 	};
 	this.events = {};
 	this.element = {};
 
 
 	// arr_autoList 보정
-	for (var i in arr_autoList){
-		if (self.type == i){
-			var arr_prop = arr_autoList[i];
-
-			for (var j in arr_prop)
-				self.style[arr_prop[j]] = "auto";
-
-			break;
-		}
-	}
+	_setAuto(arr_autoList_1);
+	_setAuto(arr_autoList_2);
 
 	// 객체 이벤트 준비
 	// 객체 preload
@@ -779,10 +904,10 @@ lve.fn.session.prototype.create = function(data){
 				var callback = function(self, element){
 					self.element = element;
 
-					if (self.style.width == "auto")
+					if (self.style.width == "not_ready")
 						self.style.width = element.width || 10;
 
-					if (self.style.height == "auto")
+					if (self.style.height == "not_ready")
 						self.style.height = element.height || 10;
 				};
 
@@ -793,6 +918,19 @@ lve.fn.session.prototype.create = function(data){
 			case "video":{
 				this.element = document.createElement("video");
 				this.element.src = this.src;
+				this.element.oncanplay = function(e){
+					var elem_tar = e.target,
+						isPlayQueue = elem_tar.getAttribute("data-play");
+
+					if (isPlayQueue){
+						elem_tar.removeAttribute("data-play");
+						lve(self).emit("play");
+					}
+
+					elem_tar.onplay = function(){
+						lve(self).emit("play");
+					};
+				};
 				this.element.onended = function(){
 					lve(self).emit("ended");
 				};
@@ -803,7 +941,7 @@ lve.fn.session.prototype.create = function(data){
 	}
 
 	// 객체에 event룸 생성
-	for (var i in vars.arr_event)
+	for (var i = 0, len_i = vars.arr_event.length; i < len_i; i++)
 		this.events[vars.arr_event[i]] = [];
 
 	// 객체화시키기 위해 session.context속성 지우기
@@ -824,7 +962,7 @@ lve.fn.session.prototype.create = function(data){
 	vars.arr_scene[this.scene].push(this);
 
 	// 객체정보배열 재정렬
-	vars.isNeedSort = !0;
+	vars.isNeedSort += 1;
 	
 
 	// 객체 생성시
@@ -842,14 +980,13 @@ lve.fn.session.prototype.create = function(data){
 
 lve.fn.session.prototype.attr = function(data){
 	if (!data)
-		return !1;
+		return this.context;
 
 	// 속성 적용
 	if (typeof data == "object"){
-		data = lve_root.fn.adjustJSON(data);
-
-		for (var i = 0, length = this.context.length; i < length; i++){
-			var item = this.context[i];
+		for (var i = 0, len_i = this.context.length; i < len_i; i++){
+			var item = this.context[i],
+				data = lve_root.fn.adjustJSON(data, item);
 
 			for (var j in data){
 				item[j] = data[j];
@@ -868,34 +1005,53 @@ lve.fn.session.prototype.attr = function(data){
 	}
 
 	// 속성 반환
-	else if (typeof data == "string")
-		return this.context[0][lve_root.fn.adjustProperty(data)];
+	else if (typeof data == "string"){
+		var ret = [],
+			data = lve_root.fn.adjustProperty(data);
+
+		for (var i = 0, len_i = this.context.length; i < len_i; i++)
+			ret[i] = this.context[i][data];
+
+		return ret;
+	}
 };
 
 
 lve.fn.session.prototype.css = function(data){
-	if (!data)
-		return this.style;
+	if (!data){
+		var ret = [];
+
+		for (var i = 0, len_i = this.context.length; i < len_i; i++)
+			ret[i] = this.context[i].style;
+
+		return ret;
+	}
 
 	// 속성 적용
-	if (typeof data == "object"){
-		data = lve_root.fn.adjustJSON(data);
+	else if (typeof data == "object"){
+		var _data = lve_root.fn.adjustJSON(data);
 
 		// absolute, fixed 이외의 position 속성값을 가질 경우
 		if (
-			data.position !== undefined &&
-			data.position != "absolute" &&
-			data.position != "fixed"
+			_data.position !== undefined &&
+			_data.position != "absolute" &&
+			_data.position != "fixed"
 		){
 			console.error("position:" + data.position + "은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.");
 			return !1;
 		}
 
-		for (var i = 0, length = this.context.length; i < length; i++){
-			var item = this.context[i];
+		for (var i = 0, len_i = this.context.length; i < len_i; i++){
+			var item = this.context[i],
+				data = lve_root.fn.adjustJSON(data, item);
+			
+			for (var j in data){
+				// perspective가 변경되었을 시
+				if (item.type != "camera" && j == "perspective")
+					lve_root.vars.isNeedSort += 1;
 
-			for (var j in data)
 				item.style[j] = data[j] !== undefined ? data[j] : item.style[j];
+			}
 
 			lve(item).emit("cssModified");
 		}
@@ -904,8 +1060,15 @@ lve.fn.session.prototype.css = function(data){
 	}
 
 	// 속성 반환
-	else if (typeof data == "string")
-		return this.context[0].style[lve_root.fn.adjustProperty(data)];
+	else if (typeof data == "string"){
+		var ret = [],
+			data = lve_root.fn.adjustProperty(data);
+
+		for (var i = 0, len_i = this.context.length; i < len_i; i++)
+			ret[i] = this.context[i].style[data];
+
+		return ret;
+	}
 };
 
 lve.fn.session.prototype.draw = function(){
@@ -914,11 +1077,12 @@ lve.fn.session.prototype.draw = function(){
 
 		canvas = lve_root.vars.initSetting.canvas,
 		ctx = canvas.context,
-		canvas_elem = ctx.canvas,
+		canvas_elem = canvas.element,
 
 		usingCamera = vars.usingCamera,
 		style = this.style,
 		relative = this.relative,
+		hasGradient = Object.keys(style.gradient).length,
 
 		// 설정값 우선순위로 받아오기 (usingCamera -> initSetting)
 		scaleDistance = usingCamera.scaleDistance || initSetting.scaleDistance,
@@ -932,24 +1096,110 @@ lve.fn.session.prototype.draw = function(){
 	var _getRelativeSize = lve_root.fn.getRelativeSize,
 		_getRelativePosition = lve_root.fn.getRelativePosition;
 
+	function getGradient(that){
+		var _ctx = ctx,
+			_style = that.style,
+			_relative = that.relative,
+			_width = that.relative.width,
+			_height = that.relative.height,
+			// 그라데이션 정보
+			grd,
+			keys = Object.keys(_style.gradient),
+			textAlign_fix = 0;
 
-	lve_root.fn.canvasReset();
+		if (!keys.length)
+			return !1;
+
+		lve_root.fn.canvasReset(_style.opacity);
+
+		// text-align에 따라 위치 보정
+		if (that.type == "text"){
+			switch(_style.textAlign){
+				case "left":{
+					textAlign_fix = _width / 2;
+					break;
+				}
+				case "right":{
+					textAlign_fix = -_width / 2;
+					break;
+				}
+			}
+		}
+
+		switch(_style.gradientType){
+			case "linear":{
+				var _Math = Math,
+  					deg = _style.gradientDirection % 360 == 0 ? 1 : _style.gradientDirection % 360,
+  					men = _Math.floor(deg / 90) % 4,
+					spx = [0, _width, _width, 0],
+					spy = [0, 0, _height, _height],
+					sppx = [1, -1, -1, 1],
+					sppy = [1, 1, -1, -1],
+	    
+					rad = deg * _Math.PI / 180,
+	    
+					sin = _Math.sin(rad),
+					cos = _Math.cos(rad),
+					abs = _Math.abs;
+  
+				var rs = _height / sin,
+					px = abs(rs * cos),
+					rd = (_width - px) * px / rs,
+					r = rs + rd;
+
+				var x0 = spx[men],
+					y0 = spy[men],
+					x1 = x0 + abs(r * cos) * sppx[men],
+					y1 = y0 + abs(r * sin) * sppy[men];
+
+				grd = _ctx.createLinearGradient(x0 + _relative.left + textAlign_fix, y0 + _relative.bottom, x1 + _relative.left + textAlign_fix, y1 + _relative.bottom);
+				break;
+			}
+			case "radial":{
+				var relativeWidth_half = _width / 2,
+					relativeHeight_half = _height / 2,
+
+					ret_left = _relative.left + relativeWidth_half + textAlign_fix,
+					ret_bottom = _relative.bottom + relativeHeight_half
+
+				grd = _ctx.createRadialGradient(ret_left, ret_bottom, 0, ret_left, ret_bottom, relativeWidth_half);
+				break;
+			}
+		}
+
+		for (var i in _style.gradient){
+			var pos = i / 100,
+				color = _style.gradient[i] || "transparent";
+
+			if (isNaN(pos))
+				return !1;
+
+			grd.addColorStop(pos, color);
+		}
+
+		return grd;
+	}
 
 	if (!usingCamera)
 		return !1;
+	
+	// 상대적 거리 가져오기
+	relative.perspective = style.perspective - usingCamera.style.perspective;
 
 	// 1차 사물 그리기 예외 처리
 	if (
+		relative.perspective <= 0 || // 카메라보다 뒤에 있을 시
 		this.type == "camera" || // camera타입
 		this.type == "image" && !this.src || // image타입이며 url이 지정되지 않음
 		this.type == "video" && !this.src || // video타입이며 url이 지정되지 않음
 		this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
-		!this.src && !style.color || // src 속성이 없으며 color가 지정되지 않음
+		!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
 		this.type == "text" && !this.text || // text타입이면서 text가 지정되지 않음
 		this.type == "text" && !style.fontSize || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
 		!style.opacity || // 투명도가 0일 경우
 		!style.width || // width 가 0일 경우
-		!style.height // height 가 0일 경우
+		!style.height || // height 가 0일 경우
+		!style.scale // scale이 0일 경우
 	)
 		return !1;
 
@@ -958,28 +1208,83 @@ lve.fn.session.prototype.draw = function(){
 	 * width가 선언되지 않았을 시 자동으로 받아오기
 	 * 이는 최초 1회만 실행된다
 	 */
-	if (this.type == "text" && style.width == "auto"){
-		ctx.font = style.fontStyle + " " + style.fontWeight + " " + style.fontSize + "px " + style.fontFamily;
-		ctx.fillStyle = "transparent";
+	if (style.width == "auto" || style.height == "auto"){
+		switch(this.type){
+			case "image":{
+				var element = this.element,
+					widthScale = element.width / element.height,
+					heightScale = element.height / element.width;
 
-		style.width = ctx.measureText(this.text).width;
-		style.width_tmp = "auto";
+				// 양쪽 변 모두 auto일 경우
+				if (style.width == "auto" && style.height == "auto"){
+					style.width = element.width;
+					style.height = element.height;
+					style.width_tmp = "auto";
+					style.height_tmp = "auto";
+				}
+				// 한쪽 변만 auto일 시 
+				else{
+					// 가로 사이즈가 auto일 시
+					if (style.width == "auto"){
+						style.width = style.height * widthScale;
+						style.width_tmp = "auto";
+					}
+						// 세로 사이즈가 auto일 시
+					else{
+						style.height = style.width * heightScale;
+						style.height_tmp = "auto";
+					}
+				}
+
+				break;
+			}
+
+			case "text":{
+				ctx.font = style.fontStyle + " " + style.fontWeight + " " + style.fontSize + "px " + style.fontFamily;
+
+				var expectMeasure = ctx.measureText(this.text).width;
+				style.width = expectMeasure;
+				style.width_tmp = "auto";
+				relative.width_tmp = style.textAlign == "left" ? expectMeasure : style.textAlign == "center" ? expectMeasure / 2 : style.textAlign == "right" ? 0 : 0; 
+
+				break;
+			}
+		}
 	}
 
 
 	// 카메라에서 보일 상대적 위치 생성
 	// position속성값이 fixed일 시 relative 값 고정
 	if (style.position == "absolute"){
-		relative.perspective = style.perspective - usingCamera.style.perspective;
-		relative.fontSize = _getRelativeSize(this, style.fontSize);
-		relative.borderWidth = _getRelativeSize(this, style.borderWidth);
-		relative.shadowBlur = _getRelativeSize(this, style.shadowBlur);
-		relative.shadowOffsetX = _getRelativeSize(this, style.shadowOffsetX);
-		relative.shadowOffsetY = _getRelativeSize(this, style.shadowOffsetY);
-		relative.width = _getRelativeSize(this, style.width);
-		relative.height = _getRelativeSize(this, style.height || 1);
+		relative.scale = _getRelativeSize(this, style.scale) / style.scale;
+		
+		var relativeScale = relative.scale * style.scale;
+		// style.scale 을 기준으로 relativeSize가 정해짐
+		relative.fontSize = style.fontSize * relativeScale;
+		relative.borderWidth = style.borderWidth * relativeScale;
+		relative.shadowBlur = style.shadowBlur * relativeScale;
+		relative.shadowOffsetX = style.shadowOffsetX * relativeScale;
+		relative.shadowOffsetY = style.shadowOffsetY * relativeScale;
+		relative.width = style.width * relativeScale;
+		relative.height = style.height * relativeScale;
 		relative.left = _getRelativePosition(this, "left");
 		relative.bottom = _getRelativePosition(this, "bottom");
+		relative.blur = 0;
+
+		// blur 처리
+		// focus 기능을 사용 중이라면
+		if (usingCamera.focus){
+			var relativePerspectiveFromDistance = scaleDistance - relative.perspective;
+
+			// scaleDistance 보다 근접했을 경우
+			if (relativePerspectiveFromDistance > 0){
+				// 상대적 거리에 따라 blur 처리
+				var maxiumBlur = 5,
+					relativeBlur = (scaleDistance - relative.perspective) / (scaleDistance / maxiumBlur);
+
+				relative.blur = relativeBlur;
+			}
+		}
 	} else{
 		relative.perspective = style.perspective;
 		relative.fontSize = style.fontSize;
@@ -991,19 +1296,21 @@ lve.fn.session.prototype.draw = function(){
 		relative.height = style.height;
 		relative.left = style.left;
 		relative.bottom = canvas_elem.height - (style.bottom + style.height);
+		relative.blur = style.blur;
 	}
 
+	if (!style.width_tmp || !style.height_tmp){
+		style.width = style.width_tmp || style.width;
+		style.height = style.height_tmp || style.height;
 
-	if (style.width_tmp == "auto"){
-		style.width = "auto";
 		delete style.width_tmp;
+		delete style.height_tmp;
 	}
-
 
 	// 2차 사물 그리기 예외처리
 	if (
-		relative.left + relative.width < 0 || // 화면 왼쪽으로 빠져나감
-		relative.left - relative.width > canvas_elem.width || // 화면 오른쪽으로 빠져나감
+		relative.left + relative.width + relative.width_tmp < 0 || // 화면 왼쪽으로 빠져나감
+		relative.left - relative.width - relative.width_tmp > canvas_elem.width || // 화면 오른쪽으로 빠져나감
 		relative.bottom + relative.height < 0 || // 화면 아래로 빠져나감
 		relative.bottom - relative.height > canvas_elem.height || // 화면 위로 빠져나감
 		relative.width <= 0 || //  width가 0보다 작을 때
@@ -1014,17 +1321,16 @@ lve.fn.session.prototype.draw = function(){
 	)
 		return !1;
 		
-
-
-	// 투명도 설정 (Opacity)
-	ctx.globalAlpha = style.opacity;
-	// 회전도 설정 (Rotate)
-	//ctx.rotate(this.style.rotate * Math.PI / 180);
-
+	// 캔버시 지우기 및 그림 작업 (필터)
+	lve_root.fn.canvasReset(style.opacity, relative.blur);
 
 	switch(this.type){
-		case "image":
+		case "image":{
 			var imageObj = this.element;
+
+			// 아직 그림 데이터가 로드되지 않았다면 그리지 않기
+			if (imageObj === {})
+				return !1;
 
 			if (style.shadowColor) {
 				ctx.shadowColor = style.shadowColor;
@@ -1033,27 +1339,24 @@ lve.fn.session.prototype.draw = function(){
 				ctx.shadowOffsetY = relative.shadowOffsetY;
 			}
 
-			ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
-			ctx.fill();
-
-			lve_root.fn.canvasReset(style.opacity);
-
-			ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-			ctx.strokeStyle = style.borderColor;
-			ctx.lineWidth = relative.borderWidth;
-
-			if (style.borderWidth)
+			if (style.borderWidth){
+				ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+				ctx.strokeStyle = style.borderColor;
+				ctx.lineWidth = relative.borderWidth;
 				ctx.stroke();
+			}
+
+			ctx.beginPath();
 
 			try{
+				ctx.fill();
 				ctx.drawImage(imageObj, relative.left, relative.bottom, relative.width, relative.height);
 			} catch(e){};
 
 			break;
+		}
 
-		case "circle":
-			canvas.context.fillStyle = style.color;
-
+		case "circle":{
 			if (style.shadowColor) {
 				ctx.shadowColor = style.shadowColor;
 				ctx.shadowBlur = relative.shadowBlur;
@@ -1061,23 +1364,25 @@ lve.fn.session.prototype.draw = function(){
 				ctx.shadowOffsetY = relative.shadowOffsetY;
 			}
 
+			if (style.borderWidth){
+				ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2 + relative.borderWidth / 2, 0, Math.PI * 2);
+				ctx.strokeStyle = style.borderColor;
+				ctx.lineWidth = relative.borderWidth;
+				ctx.stroke();
+			}
+
+			ctx.beginPath();
+
+			var fillColor = hasGradient ? getGradient(this) : style.color;
+
+			ctx.fillStyle = fillColor;
 			ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2, 0, Math.PI * 2);
 			ctx.fill();
 
-			lve_root.fn.canvasReset(style.opacity);
-
-			ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2 + relative.borderWidth / 2, 0, Math.PI * 2);
-			ctx.strokeStyle = style.borderColor;
-			ctx.lineWidth = relative.borderWidth;
-
-			if (style.borderWidth)
-				ctx.stroke();
-
 			break;
+		}
 
-		case "square":
-			ctx.fillStyle = style.color;
-
+		case "square":{
 			if (style.shadowColor) {
 				ctx.shadowColor = style.shadowColor;
 				ctx.shadowBlur = relative.shadowBlur;
@@ -1085,25 +1390,32 @@ lve.fn.session.prototype.draw = function(){
 				ctx.shadowOffsetY = relative.shadowOffsetY;
 			}
 
+			if (style.borderWidth){
+				ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+				ctx.strokeStyle = style.borderColor;
+				ctx.lineWidth = relative.borderWidth;
+				ctx.stroke();
+			}
+
+			ctx.beginPath();
+
+			var fillColor = hasGradient ? getGradient(this) : style.color;
+
+			ctx.fillStyle = fillColor;
 			ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
 			ctx.fill();
 
-			lve_root.fn.canvasReset(style.opacity);
-
-			ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-			ctx.strokeStyle = style.borderColor;
-			ctx.lineWidth = relative.borderWidth;
-
-			if (style.borderWidth)
-				ctx.stroke();
-
 			break;
+		}
 
-		case "text":
-			var fix_textAlignLeft = relative.width / 2;
+		case "text":{
+			delete relative.width_tmp;
+
+			var fix_relativeLeft = style.position == "absolute" ? relative.left + relative.width / 2 : relative.left,
+				fillColor = hasGradient ? getGradient(this) : style.color;
 
 			ctx.font = style.fontStyle + " " + style.fontWeight + " " + relative.fontSize + "px " + style.fontFamily;
-			ctx.fillStyle = style.color;
+			ctx.fillStyle = fillColor;
 			ctx.textAlign = style.textAlign;
 
 			if (style.shadowColor) {
@@ -1113,16 +1425,18 @@ lve.fn.session.prototype.draw = function(){
 				ctx.shadowOffsetY = relative.shadowOffsetY;
 			}
 
-			ctx.strokeStyle = style.borderColor;
-			ctx.lineWidth = relative.borderWidth;
+			if (style.borderWidth){
+				ctx.strokeStyle = style.borderColor;
+				ctx.lineWidth = relative.borderWidth;
+				ctx.strokeText(this.text, fix_relativeLeft, relative.bottom, relative.width);
+			}
 
-			if (style.borderWidth)
-				ctx.strokeText(this.text, relative.left + fix_textAlignLeft, relative.bottom, relative.width);
+			ctx.fillText(this.text, fix_relativeLeft, relative.bottom, relative.width);
 
-			ctx.fillText(this.text, relative.left + fix_textAlignLeft, relative.bottom, relative.width);
 			break;
-
-		case "video":
+		}
+			
+		case "video":{
 			var videoObj = this.element;
 
 			if (style.shadowColor) {
@@ -1132,23 +1446,23 @@ lve.fn.session.prototype.draw = function(){
 				ctx.shadowOffsetY = relative.shadowOffsetY;
 			}
 
-			ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
-			ctx.fill();
-
-			lve_root.fn.canvasReset(style.opacity);
-
-			ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-			ctx.strokeStyle = style.borderColor;
-			ctx.lineWidth = relative.borderWidth;
-
-			if (style.borderWidth)
+			if (style.borderWidth){
+				ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+				ctx.strokeStyle = style.borderColor;
+				ctx.lineWidth = relative.borderWidth;
 				ctx.stroke();
+			}
+
+			ctx.beginPath();
+			ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
 
 			try{
+				ctx.fill();
 				ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
 			} catch(e){};
 			
 			break;
+		}
 	}
 };
 
@@ -1161,8 +1475,45 @@ lve.fn.session.prototype.draw = function(){
  * 이는 사물이 적을 시 큰 문제가 되진 않습니다. 하지만 사물이 많아질수록 성능이 급격히 저하됩니다
  */
 lve.fn.session.prototype.use = function(){
-	lve_root.vars.usingCamera = Array.isArray(this.context) ? this.context[0] : this.context;
-	return lve(lve_root.vars.usingCamera);
+	var vars = lve_root.vars,
+		usingCamera = vars.usingCamera,
+		tarCamera = this.context[0];
+
+	// 아직 카메라가 설정되지 않았을 경우
+	if (!usingCamera.hasOwnProperty('primary')){
+		vars.usingCamera = tarCamera;
+		return !1;
+	}
+
+	// 카메라가 지정되어 있고
+	// 현재와 다른 씬일 경우
+	if (usingCamera.scene != tarCamera.scene){
+		var arr_scene_old = vars.arr_scene[usingCamera.scene],
+			arr_scene_new = vars.arr_scene[tarCamera.scene];
+
+		// 현재 씬에서 비디오 객체를 순회하며 볼륨 음소거
+		for (var i = 0, len_i = arr_scene_old.length; i < len_i; i++){
+			var item = arr_scene_old[i];
+
+			if (item.type == "video")
+				item.element.muted = !0;
+		}
+
+		// 카메라 갱신
+		vars.usingCamera = tarCamera;
+
+		for (var i = 0, len_i = arr_scene_new.length; i < len_i; i++){
+			var item = arr_scene_new[i];
+
+			if (item.type == "video")
+				item.element.muted = !1;
+		}
+	}
+
+	// 객체 정렬
+	vars.isNeedSort += 1;
+
+	return lve(vars.usingCamera);
 };
 
 // 객체가 해당 사물을 쫒음
@@ -1181,7 +1532,7 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 	// unfollow하여 팔로잉 객체의 팔로워 리스트에서 본인 제거
 	lve(this).unfollow();
 
-	for (var i = 0, length = this.context.length; i < length; i++){
+	for (var i = 0, len_i = this.context.length; i < len_i; i++){
 		var	item = this.context[i],
 			arr_follower = [];
 
@@ -1202,8 +1553,8 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 			tarObj.follow_init.follower.push(item);
 
 			// cssModified 이벤트를 걸어서 본인의 팔로워들의 위치 변화 (css)
-			lve(tarObj).on("cssModified", function(e){
-				for (var j = 0, length = e.target.follow_init.follower.length; j < length; j++){
+			lve(tarObj).on("followed cssModified animateModified followUpdate", function(e){
+				for (var j = 0, len_j = e.target.follow_init.follower.length; j < len_j; j++){
 					var	follower = e.target.follow_init.follower[j],
 						follower_style = follower.style,
 						obj_follower = follower.follow_init.relative;
@@ -1211,6 +1562,8 @@ lve.fn.session.prototype.follow = function(tarObjName, relativePosition){
 					follower_style.left = tarObj.style.left + obj_follower.left;
 					follower_style.bottom = tarObj.style.bottom + obj_follower.bottom;
 					follower_style.perspective = tarObj.style.perspective + obj_follower.perspective;
+
+					lve(follower).emit("followUpdate");
 				}
 			}).emit("followed"); // followed 이벤트 발생
 		}
@@ -1254,11 +1607,11 @@ lve.fn.session.prototype.unfollow = function(){
 lve.fn.session.prototype.kick = function(tarObjName){
 	var arr_kickTar = lve(tarObjName).context;
 
-	for (var i = 0, length = this.context.length; i < length; i++){
+	for (var i = 0, len_i = this.context.length; i < len_i; i++){
 		var	item = this.context[i],
 			item_follower = item.follow_init.follower;
-
-		for (var j in item_follower)
+			
+		for (var j = 0, len_j = item_follower.length; j < len_j; j++)
 			// 해당 팔로워가 킥 리스트에 있을 경우
 			// 언팔로우
 			// 팔로워 kicked 이벤트 발생
@@ -1278,14 +1631,13 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 	if (!data)
 		return !1;
 
-	data = lve_root.fn.adjustJSON(data);
-
 	var tmp_duration = typeof duration == "number" ? duration : 1,
 		tmp_easing = typeof easing == "string" ? easing : "linear",
 		tmp_callback = arguments[arguments.length - 1];
 
-	for (var i = 0, length = this.context.length; i < length; i++){
+	for (var i = 0, len_i = this.context.length; i < len_i; i++){
 		var item = this.context[i],
+			data = lve_root.fn.adjustJSON(data, item),
 			ani_init = item.ani_init;
 
 		ani_init.count = ani_init.count || {};
@@ -1297,8 +1649,8 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 		for (var j in data){
 			// animate 가능한 속성인 경우
 			// 불가능한 경우 -> #0075c8, red, DOMElement 등
-			if (isNaN(parseFloat(data[j])))
-				continue;
+			if (isNaN(data[j] - 0))
+				return !1;
 
 			if (data[j] !== undefined && data[j] !== item.style[j]){
 				ani_init.duration[j] = tmp_duration;
@@ -1327,7 +1679,7 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 
 // 해당 객체의 움직임을 멈춤
 lve.fn.session.prototype.stop = function(){
-	for (var i = 0, length = this.context.length; i < length; i++){
+	for (var i = 0, len_i = this.context.length; i < len_i; i++){
 		this.context[i].ani_init = {};
 
 		// animatestop 이벤트 발생
@@ -1339,11 +1691,12 @@ lve.fn.session.prototype.stop = function(){
 
 // 객체를 삭제
 lve.fn.session.prototype.remove = function(){
-	var	arr_object = lve_root.vars.arr_object,
-		arr_scene = lve_root.vars.arr_scene,
-		arr_callback = lve_root.vars.arr_callback,
-		arr_keyword = lve_root.vars.selectorKeyword,
-		canvas = lve_root.vars.initSetting.canvas.context.canvas;
+	var	vars = lve_root.vars,
+		arr_object = vars.arr_object,
+		arr_scene = vars.arr_scene,
+		arr_callback = vars.arr_callback,
+		arr_keyword = vars.selectorKeyword,
+		canvas = vars.initSetting.canvas.element;
 
 	// 객체정보배열을 돌면서 일괄삭제 후
 	// 객체정보배열 재생성
@@ -1380,6 +1733,11 @@ lve.fn.session.prototype.remove = function(){
 		arr_scene[item.scene].splice(item_index.arr_scene, 1);
 		arr_keyword[item.name].splice(item_index.arr_keyword, 1);
 
+		// 사용중인 카메라 객체일 경우
+		// 카메라 설정 초기화
+		if (item == vars.usingCamera)
+			vars.usingCamera = {};
+
 		// 키워드 삭제
 		delete arr_keyword["[PRIMARY=" + item.primary + "]"];
 	}
@@ -1403,16 +1761,16 @@ lve.fn.session.prototype.on = function(e, fn){
 
 	e = e.split(" ");
 
-	for (var i in e){
+	for (var i = 0, len_i = e.length; i < len_i; i++){
 		var item = e[i];
 
-		if (lve_root.vars.arr_event.indexOf(item.toLowerCase()) == -1){
-			console.error("존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (" + lve_root.vars.arr_event.join(", ") + ")");
+		if (lve_root.vars.arr_event.indexOf(item) == -1){
+			console.error(item + "은(는) 존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (" + lve_root.vars.arr_event.join(", ") + ")");
 			return !1;
 		}
 
 		// 객체를 순회하며 이벤트 할당
-		for (var j in this.context)
+		for (var j = 0, len_j = this.context.length; j < len_j; j++)
 			this.context[j].events[item].push(fn);
 	}
 
@@ -1428,7 +1786,7 @@ lve.fn.session.prototype.off = function(e){
 
 	e = e.split(" ");
 
-	for (var i in e){
+	for (var i = 0, len_i = e.length; i < len_i; i++){
 		var item = e[i];
 
 		if (lve_root.vars.arr_event.indexOf(item.toLowerCase()) == -1){
@@ -1437,7 +1795,7 @@ lve.fn.session.prototype.off = function(e){
 		}
 
 		// 객체를 순회하며 이벤트 할당
-		for (var j in this.context)
+		for (var j = 0, len_j = this.context.length; j < len_j; j++)
 			this.context[j].events[item] = [];
 	}
 
@@ -1449,7 +1807,7 @@ lve.fn.session.prototype.play = function () {
 	if (!lve_root.vars.isRunning)
 		return !1;
 
-	for (var i = 0, length = this.context.length; i < length; i++) {
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
 		var item = this.context[i];
 
 		if (!item.src){
@@ -1462,8 +1820,8 @@ lve.fn.session.prototype.play = function () {
 			continue;
 		}
 
+		item.element.setAttribute("data-play", true);
 		item.element.play();
-		lve(item).emit("play");
 	}
 
 	return this;
@@ -1471,7 +1829,7 @@ lve.fn.session.prototype.play = function () {
 
 // 객체의 재생을 멈춤
 lve.fn.session.prototype.pause = function () {
-	for (var i = 0, length = this.context.length; i < length; i++) {
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
 		var item = this.context[i];
 
 		if (!item.element.pause) {
@@ -1486,16 +1844,163 @@ lve.fn.session.prototype.pause = function () {
 	return this;
 };
 
+// 객체에 클래스 추가
+lve.fn.session.prototype.addClass = function(_className){
+	var isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 없을 경우
+		if (index_className == -1){
+			arr_className.push(className);
+
+			if (arr_className[0] == "")
+				arr_className.splice(0, 1);
+
+			item.className = arr_className.join(" ");
+		}
+	}
+
+	return this;
+};
+
+// 객체에 클래스 제거
+lve.fn.session.prototype.removeClass = function(_className){
+	var isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 있을 경우
+		if (index_className != -1){
+			arr_className.splice(index_className, 1);
+
+			if (arr_className[0] == "")
+				arr_className.splice(0, 1);
+
+			item.className = arr_className.join(" ");
+		}
+	}
+
+	return this;
+};
+
+// 객체에 클래스 반전
+lve.fn.session.prototype.toggleClass = function(_className){
+	var isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 없을 경우
+		if (index_className == -1)
+			arr_className.push(className);
+
+		// 해당 객체에 className이 있을 경우
+		else
+			arr_className.splice(index_className, 1);
+
+		if (arr_className[0] == "")
+			arr_className.splice(0, 1);
+
+		item.className = arr_className.join(" ");
+	}
+
+	return this;
+};
+
+// 객체들에 클래스가 있는지 확인
+lve.fn.session.prototype.hasClass = function(_className){
+	var isExist = !0,
+		isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 없을 경우
+		if (index_className == -1){
+			isExist = !1;
+			break;
+		}
+	}
+
+	return isExist;
+};
+
+// 객체에 해당되는 클래스가 있는 객체만 추출
+lve.fn.session.prototype.findClass = function(_className){
+	var retArray = {
+		name: this.name,
+		context: []
+	},
+	isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 없을 경우
+		if (index_className != -1)
+			retArray.context.push(item);
+	}
+
+	return lve(retArray);
+};
+
+lve.fn.session.prototype.notClass = function(_className){
+	var retArray = {
+		name: this.name,
+		context: []
+	},
+	isFn = typeof _className == "function";
+
+	for (var i = 0, len_i = this.context.length; i < len_i; i++) {
+		var item = this.context[i],
+			item_className = item.className,
+			className = isFn ? _className(item) : _className,
+			arr_className = item_className.split(" "),
+			index_className = arr_className.indexOf(className);
+
+		// 해당 객체에 className이 없을 경우
+		if (index_className == -1)
+			retArray.context.push(item);
+	}
+
+	return lve(retArray);
+};
+
 // 객체의 이벤트 발생
-lve.fn.session.prototype.emit = function(e){
-	for (var i = 0, length = this.context.length; i < length; i++){
+lve.fn.session.prototype.emit = function(e, detail = {}){
+	for (var i = 0, len_i = this.context.length; i < len_i; i++){
 		var	item = this.context[i],
+			arr_eventList = item.events[e],
 			eObj = {
 				type: e,
-				target: item
+				target: item,
+				originalEvent: detail
 			};
 
-		for (var j in item.events[e])
-			item.events[e][j](eObj);
+		for (var j in arr_eventList)
+			arr_eventList[j](eObj);
 	}
 };
