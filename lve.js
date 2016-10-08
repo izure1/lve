@@ -894,7 +894,7 @@ lve.fn.session.prototype.create = function(data){
 		self = this,
 		arr_autoList_1 = {
 			text: {
-				property: ["width"],
+				property: ["width", "height"],
 				default: "auto"
 			},
 			image: {
