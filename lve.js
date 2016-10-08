@@ -1,5 +1,5 @@
 /* Light Visualnovel Engine
- * version 1.6.0
+ * version 1.6.1
  *
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
@@ -88,7 +88,7 @@ lve_root = {
 		isRunning: !0,
 		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됨
 		usingCamera: {}, // 사용중인 카메라
-		version: "1.6.0" // lve.js 버전
+		version: "1.6.1" // lve.js 버전
 	},
 	cache: {
 	    arr_callback: [], // 콜백 스택 - callback함수를 저장하는 변수
@@ -1358,12 +1358,14 @@ lve.fn.session.prototype.draw = function(){
 				break;
 			}
 
-			case "text":{
+		    case "text":{
 				ctx.font = style.fontStyle + " " + style.fontWeight + " " + style.fontSize + "px " + style.fontFamily;
 
 				var expectMeasure = ctx.measureText(this.text).width;
 				style.width = expectMeasure;
 				style.width_tmp = "auto";
+				style.height = style.fontSize;
+				style.height_tmp = "auto";
 				relative.width_tmp = style.textAlign == "left" ? expectMeasure : style.textAlign == "center" ? expectMeasure / 2 : style.textAlign == "right" ? 0 : 0; 
 
 				break;
@@ -1424,6 +1426,9 @@ lve.fn.session.prototype.draw = function(){
 
 		delete style.width_tmp;
 		delete style.height_tmp;
+	} else {
+	    delete style.width_tmp;
+	    delete style.height_tmp;
 	}
 
 	// 2차 사물 그리기 예외처리
