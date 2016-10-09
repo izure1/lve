@@ -458,6 +458,27 @@ lve_root = {
 		    var usingCamera = lve_root.vars.usingCamera;
 
 		    return !(!usingCamera || !usingCamera.hasOwnProperty("primary"));
+		},
+
+		getTextWidth: function(obj){
+		    var ctx = lve_root.vars.initSetting.canvas.context,
+                style = obj.style;
+
+		    ctx.font = style.fontStyle + " " + style.fontWeight + " " + style.fontSize + "px " + style.fontFamily;
+
+		    var textWidth = ctx.measureText(obj.text).width;
+		    // 문자열 길이가 전체 길이보다 크다면
+		    // 전체 길이로 축소
+		    if (style.width == "auto")
+		        style.width = textWidth;
+
+		    else if (style.width < textWidth)
+		        textWidth = style.width;
+
+		    if (style.height == "auto")
+		        style.height = style.fontSize;
+
+		    obj.__system__.textWidth = textWidth;
 		}
 	}
 };
@@ -922,10 +943,17 @@ lve.fn.session.prototype.create = function(data){
 	function _setAuto(arr){
 		for (var i in arr){
 			if (self.type == i){
-				var arr_tarProp = arr[i].property;
+				var arr_tarPropList = arr[i].property;
 
-				for (var j = 0, len_j = arr_tarProp.length; j < len_j; j++)
-					self.style[arr_tarProp[j]] = arr[i].default;
+				for (var j = 0, len_j = arr_tarPropList.length; j < len_j; j++){
+				    var defaultVal = arr[i].default;
+
+				    if (typeof defaultVal == "function")
+				        defaultVal = defaultVal(self);
+                    
+                    if (!!defaultVal)
+				        self.style[arr_tarPropList[j]] = defaultVal;
+				}
 			}
 		}
 	}
@@ -973,13 +1001,18 @@ lve.fn.session.prototype.create = function(data){
 	this.events = {};
 	this.element = {};
 	this.__system__ = {
-	    drawing: !0
+	    drawing: !0,
+        textWidth: "auto"
 	};
 
 
 	// arr_autoList 보정
 	_setAuto(arr_autoList_1);
 	_setAuto(arr_autoList_2);
+    // text 타입 textWidth 속성 구해오기
+	setTimeout(function(){
+	    lve_root.fn.getTextWidth(self);
+	}, 1);
 
 	// 객체 이벤트 준비
 	// 객체 preload
@@ -1070,12 +1103,19 @@ lve.fn.session.prototype.attr = function(data){
                     for (var j in _data){
                         var newAttrVal = _data[j];
 
-                        if (j == "src" && item.type == "image"){
+                        // image 타입이면서 src 속성을 변경할 시
+                        if (item.type == "image" && j == "src"){
                             item[j] = newAttrVal;
                             // 이미지 미리불러오기
                             lve_root.fn.preloadData(item, "img", function(self, element){
                                 self.element = element;
                             });
+                            continue;
+                        }
+                        // text 타입이면서 text 속성을 변경할 시
+                        else if (item.type == "text" && j == "text"){
+                            item[j] = newAttrVal;
+                            lve_root.fn.getTextWidth(item);
                             continue;
                         }
 
@@ -1150,6 +1190,12 @@ lve.fn.session.prototype.css = function(data){
                         if (item.type != "camera" && j == "perspective")
                             // z-index 재정렬
                             lve_root.cache.isNeedSort++;
+                        // text 객체이면서 width 속성이 변경되었을 시
+                        else if (item.type == "text" && j == "width"){
+                            item.style[j] = _data[j];
+                            lve_root.fn.getTextWidth(item);
+                            continue;
+                        }
 
                         item.style[j] = _data[j];
                     }
@@ -1323,54 +1369,41 @@ lve.fn.session.prototype.draw = function(){
 		disappearanceSight = usingCamera.disappearanceSight || initSetting.disappearanceSight;
 
 
-	/* 캔버스 text타입
+	/* 캔버스 image, text타입
 	 * width가 선언되지 않았을 시 자동으로 받아오기
 	 * 이는 최초 1회만 실행된다
 	 */
 	if (style.width == "auto" || style.height == "auto"){
-		switch(this.type){
-			case "image":{
-				var element = this.element,
+	    switch(this.type){
+	        case "image":{
+	            var element = this.element,
 					widthScale = element.width / element.height,
 					heightScale = element.height / element.width;
 
-				// 양쪽 변 모두 auto일 경우
-				if (style.width == "auto" && style.height == "auto"){
-					style.width = element.width;
-					style.height = element.height;
-					style.width_tmp = "auto";
-					style.height_tmp = "auto";
-				}
-				// 한쪽 변만 auto일 시 
-				else{
-					// 가로 사이즈가 auto일 시
-					if (style.width == "auto"){
-						style.width = style.height * widthScale;
-						style.width_tmp = "auto";
-					}
-						// 세로 사이즈가 auto일 시
-					else{
-						style.height = style.width * heightScale;
-						style.height_tmp = "auto";
-					}
-				}
+	            // 양쪽 변 모두 auto일 경우
+	            if (style.width == "auto" && style.height == "auto"){
+	                style.width = element.width;
+	                style.height = element.height;
+	                style.width_tmp = "auto";
+	                style.height_tmp = "auto";
+	            }
+	                // 한쪽 변만 auto일 시 
+	            else{
+	                // 가로 사이즈가 auto일 시
+	                if (style.width == "auto"){
+	                    style.width = style.height * widthScale;
+	                    style.width_tmp = "auto";
+	                }
+	                    // 세로 사이즈가 auto일 시
+	                else{
+	                    style.height = style.width * heightScale;
+	                    style.height_tmp = "auto";
+	                }
+	            }
 
-				break;
-			}
-
-		    case "text":{
-				ctx.font = style.fontStyle + " " + style.fontWeight + " " + style.fontSize + "px " + style.fontFamily;
-
-				var expectMeasure = ctx.measureText(this.text).width;
-				style.width = expectMeasure;
-				style.width_tmp = "auto";
-				style.height = style.fontSize;
-				style.height_tmp = "auto";
-				relative.width_tmp = style.textAlign == "left" ? expectMeasure : style.textAlign == "center" ? expectMeasure / 2 : style.textAlign == "right" ? 0 : 0; 
-
-				break;
-			}
-		}
+	            break;
+	        }
+	    }
 	}
 
 
@@ -1388,6 +1421,7 @@ lve.fn.session.prototype.draw = function(){
 		relative.shadowOffsetY = style.shadowOffsetY * relativeScale;
 		relative.width = style.width * relativeScale;
 		relative.height = style.height * relativeScale;
+		relative.textWidth = this.__system__.textWidth * relativeScale;
 		relative.left = _getRelativePosition(this, "left");
 		relative.bottom = _getRelativePosition(this, "bottom");
 		relative.blur = style.blur;
@@ -1415,20 +1449,10 @@ lve.fn.session.prototype.draw = function(){
 		relative.shadowOffsetY = style.shadowOffsetY;
 		relative.width = style.width;
 		relative.height = style.height;
+		relative.textWidth = this.__system__.textWidth;
 		relative.left = style.left;
 		relative.bottom = canvas_elem.height - (style.bottom + style.height);
 		relative.blur = style.blur;
-	}
-
-	if (!style.width_tmp || !style.height_tmp){
-		style.width = style.width_tmp || style.width;
-		style.height = style.height_tmp || style.height;
-
-		delete style.width_tmp;
-		delete style.height_tmp;
-	} else {
-	    delete style.width_tmp;
-	    delete style.height_tmp;
 	}
 
 	// 2차 사물 그리기 예외처리
@@ -1538,14 +1562,12 @@ lve.fn.session.prototype.draw = function(){
 		case "text":{
 		    delete relative.width_tmp;
 
-		    if (style.position == "absolute")
-		        relative.left += relative.width / 2;
-
-			var fillColor = hasGradient ? getGradient(this) : style.color;
+		    var fillColor = hasGradient ? getGradient(this) : style.color,
+		        left = relative.left;
 
 			ctx.font = style.fontStyle + " " + style.fontWeight + " " + relative.fontSize + "px " + style.fontFamily;
 			ctx.fillStyle = fillColor;
-			ctx.textAlign = style.textAlign;
+			ctx.textAlign = style.position == "absolute" ? "left" : style.textAlign;
 
 			if (style.shadowColor) {
 				ctx.shadowColor = style.shadowColor;
@@ -1560,7 +1582,24 @@ lve.fn.session.prototype.draw = function(){
 				ctx.strokeText(this.text, relative.left, relative.bottom, relative.width);
 			}
 
-			ctx.fillText(this.text, relative.left, relative.bottom + relative.height, relative.width);
+			if (style.position == "absolute"){
+			    switch(style.textAlign){
+			        case "left":{
+			            left = relative.left;
+			            break;
+			        }
+			        case "center":{
+			            left = relative.left + (relative.width / 2) - (relative.textWidth / 2);
+			            break;
+			        }
+			        case "right":{
+			            left = relative.left + relative.width - relative.textWidth;
+			            break;
+			        }
+			    }
+			}
+
+			ctx.fillText(this.text, left, relative.bottom + relative.height, relative.width);
 			
 			break;
 		}
