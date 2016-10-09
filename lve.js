@@ -1,5 +1,5 @@
 /* Light Visualnovel Engine
- * version 1.6.1
+ * version 1.6.2
  *
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
@@ -88,7 +88,7 @@ lve_root = {
 		isRunning: !0,
 		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됨
 		usingCamera: {}, // 사용중인 카메라
-		version: "1.6.1" // lve.js 버전
+		version: "1.6.2" // lve.js 버전
 	},
 	cache: {
 	    arr_callback: [], // 콜백 스택 - callback함수를 저장하는 변수
@@ -1536,10 +1536,12 @@ lve.fn.session.prototype.draw = function(){
 		}
 
 		case "text":{
-			delete relative.width_tmp;
+		    delete relative.width_tmp;
 
-			var fix_relativeLeft = style.position == "absolute" ? relative.left + relative.width / 2 : relative.left,
-				fillColor = hasGradient ? getGradient(this) : style.color;
+		    if (style.position == "absolute")
+		        relative.left += relative.width / 2;
+
+			var fillColor = hasGradient ? getGradient(this) : style.color;
 
 			ctx.font = style.fontStyle + " " + style.fontWeight + " " + relative.fontSize + "px " + style.fontFamily;
 			ctx.fillStyle = fillColor;
@@ -1555,11 +1557,11 @@ lve.fn.session.prototype.draw = function(){
 			if (style.borderWidth){
 				ctx.strokeStyle = style.borderColor;
 				ctx.lineWidth = relative.borderWidth;
-				ctx.strokeText(this.text, fix_relativeLeft, relative.bottom, relative.width);
+				ctx.strokeText(this.text, relative.left, relative.bottom, relative.width);
 			}
 
-			ctx.fillText(this.text, fix_relativeLeft, relative.bottom, relative.width);
-
+			ctx.fillText(this.text, relative.left, relative.bottom + relative.height, relative.width);
+			
 			break;
 		}
 			
