@@ -1,5 +1,5 @@
 /* Light Visualnovel Engine
- * version 1.6.2
+ * version 1.7.0
  *
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
@@ -7,16 +7,14 @@
  * Dev Blog -> http://blog.linoaca.com
  * Dev Center -> http://cafe.naver.com/lvejs
  * Release -> http://github.com/izure1/lve
+ * wiki book -> http://cafe.naver.com/lvejs/book5084371
  */
 
 'use strict';
 
-// 전역 함수 캐싱
-var _Math = Math,
-    _keys = Object.keys,
-    _parseFloat = parseFloat;
-
-var lve = function(name){
+const lve_radian = Math.PI / 180,
+    
+lve = function(name){
 	// Ex. lve()
 	if (!name)
 		return;
@@ -88,12 +86,12 @@ lve_root = {
 		isRunning: !0,
 		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됨
 		usingCamera: {}, // 사용중인 카메라
-		version: "1.6.2" // lve.js 버전
+		version: "1.7.0" // lve.js 버전
 	},
 	cache: {
 	    arr_callback: [], // 콜백 스택 - callback함수를 저장하는 변수
 	    arr_type: ["camera", "image", "circle", "square", "text", "video"], // 객체 속성
-	    arr_event: ["animatestart", "animateend", "animatestop", "cssmodified", "attrmodified", "animatemodified", "follow", "followupdate", "unfollow", "followed", "unfollowed", "kick", "kicked", "play", "pause", "ended", "click", "dblclick", "mousedown", "mouseup", "addclass", "removeclass", "toggleclass"], // 객체 이벤트
+	    arr_event: ["animatestart", "animateend", "animatestop", "cssmodified", "attrmodified", "animatemodified", "follow", "followupdate", "unfollow", "followed", "unfollowed", "kick", "kicked", "play", "pause", "ended", "click", "dblclick", "mousedown", "mouseup", "addclass", "removeclass", "toggleclass", "measuretext"], // 객체 이벤트
 	    isNeedSort: 0,
 	    now: 0,
 	    primary: 1
@@ -156,7 +154,7 @@ lve_root = {
 			    var	item = arr_object[i], // 해당 객체
                     item_aniInit_countMax = item.ani_init.count_max,
                     attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
-                    attr_Length = item_aniInit_countMax ? _keys(item_aniInit_countMax).length : 0; // 해당 객체의 속성 갯수
+                    attr_Length = item_aniInit_countMax ? Object.keys(item_aniInit_countMax).length : 0; // 해당 객체의 속성 갯수
 
 			    // 사물 그려넣기
 			    if (
@@ -246,7 +244,7 @@ lve_root = {
 			    if (isNeedSort){
 			        cache.isNeedSort = 0;
 			        arr_object.sort(function(a, b){
-			            return _parseFloat(b.style.perspective) - _parseFloat(a.style.perspective);
+			            return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
 			        });
 			    }
 			}
@@ -303,10 +301,10 @@ lve_root = {
 			// 새로운 객체로 생성
 			var tmp_data = lve_root.fn.copyObject(data);
 
-			// 모든 스타일 _parseFloat화 시키기
+			// 모든 스타일 parseFloat화 시키기
 			for (var i in tmp_data){
 			    var data_origin = data[i],
-			        parseData = _parseFloat(data_origin);
+			        parseData = parseFloat(data_origin);
 
 				delete tmp_data[i];
 
@@ -324,15 +322,47 @@ lve_root = {
 			return tmp_data;
 		},
 
-		canvasReset: function (opacity = 1, blur = 0) {
-		    var ctx = lve_root.vars.initSetting.canvas.context;
+		canvasReset: function (item = {style:{}, relative:{}}) {
+            var vars = lve_root.vars,
+                initSetting = vars.initSetting,
+                usingCamera = vars.usingCamera,
 
-			ctx.restore();
-			ctx.save();
-			ctx.beginPath();
+                canvas = initSetting.canvas,
+                ctx = canvas.context,
+                _style = item.style,
+                _relative = item.relative,
 
-			ctx.globalAlpha = opacity;
-			ctx.filter = blur > 0 ? "blur(" + blur + "px)" : "none";
+                _opacity = _style.opacity || 0,
+                _blur = _style.blur || 0,
+                _rotate = _relative.rotate || 0;
+
+		    ctx.restore();
+		    ctx.save();
+		    ctx.beginPath();
+
+		    ctx.globalAlpha = _opacity;
+		    ctx.filter = _blur > 0 ? "blur(" + _blur + "px)" : "none";
+
+
+		    if (!usingCamera.style || !_rotate % 360)
+		        return;
+
+		    // Special Thanks to d_match@naver.com
+		    var radian = lve_radian * _rotate,
+                canvas_elem = canvas.element,
+                centX = canvas_elem.width / 2,
+		        centY = canvas_elem.height / 2,
+                
+		        radian_cos = Math.cos(-radian),
+		        radian_sin = Math.sin(-radian);
+
+		    var rotX = centX * radian_cos - centY * radian_sin,
+                rotY = centX * radian_sin + centY * radian_cos;
+
+		    _relative.left -= (centX - rotX);
+		    _relative.bottom -= (centY - rotY);
+
+		    ctx.rotate(radian);
 		},
 
 		getRelativeSize: function (tarObj, tarObj_size) {
@@ -412,7 +442,7 @@ lve_root = {
 
 			cache.isNeedSort = 0;
 			vars.arr_object.sort(function(a, b){
-				return _parseFloat(b.style.perspective) - _parseFloat(a.style.perspective);
+				return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
 			});
 
 			while (len_i--){
@@ -540,17 +570,6 @@ lve.init = function (data) {
 	}
 
 	return !0;
-},
-
-lve.reltofix = function (p) {
-	var initSetting = lve_root.vars.initSetting,
-		canvas = initSetting.canvas.element,
-		left = (canvas.width / 2) - p,
-		bottom = (canvas.height / 2) - p;
-
-	return {
-		left: left, bottom: bottom
-	};
 },
 
 lve.pause = function () {
@@ -739,7 +758,7 @@ lve.calc = function(data = {}){
 	}
 
 	// getRelativeSize와 사용자의 요청값을 비교하여 증감 비율 구하기
-	var compare_option = _keys(tmp_ret)[0],
+	var compare_option = Object.keys(tmp_ret)[0],
 		fixScale = data[compare_option] / tmp_ret[compare_option];
 
 	// 좌표값이 아닌 속성값을 증감 비율에 따라 보정
@@ -749,7 +768,7 @@ lve.calc = function(data = {}){
 		if (!isPosition)
 			// 숫자식만 계산함
 			if (!isNaN(
-				_parseFloat(tmp_ret[i])
+				parseFloat(tmp_ret[i])
 			))
 				tmp_ret[i] *= fixScale * fixScale;
 	}
@@ -866,32 +885,32 @@ lve.fn.session.prototype.getEasingData = function(attr){
 			t -= 2;
 			return c/2*(t*t*t*t*t + 2) + b;
 		case "easeInSine":
-		    return -c * _Math.cos(t/d * (_Math.PI/2)) + c + b;
+		    return -c * Math.cos(t/d * (Math.PI/2)) + c + b;
 		case "easeOutSine":
-		    return c * _Math.sin(t/d * (_Math.PI/2)) + b;
+		    return c * Math.sin(t/d * (Math.PI/2)) + b;
 		case "easeInOutSine":
-		    return -c/2 * (_Math.cos(_Math.PI*t/d) - 1) + b;
+		    return -c/2 * (Math.cos(Math.PI*t/d) - 1) + b;
 		case "easeInExpo":
-		    return c * _Math.pow( 2, 10 * (t/d - 1) ) + b;
+		    return c * Math.pow( 2, 10 * (t/d - 1) ) + b;
 		case "easeOutExpo":
-		    return c * ( -_Math.pow( 2, -10 * t/d ) + 1 ) + b;
+		    return c * ( -Math.pow( 2, -10 * t/d ) + 1 ) + b;
 		case "easeInOutExpo":
 			t /= d/2;
-			if (t < 1) return c/2 * _Math.pow( 2, 10 * (t - 1) ) + b;
+			if (t < 1) return c/2 * Math.pow( 2, 10 * (t - 1) ) + b;
 			t--;
-			return c/2 * ( -_Math.pow( 2, -10 * t) + 2 ) + b;
+			return c/2 * ( -Math.pow( 2, -10 * t) + 2 ) + b;
 		case "easeInCirc":
 			t /= d;
-			return -c * (_Math.sqrt(1 - t*t) - 1) + b;
+			return -c * (Math.sqrt(1 - t*t) - 1) + b;
 		case "easeOutCirc":
 			t /= d;
 			t--;
-			return c * _Math.sqrt(1 - t*t) + b;
+			return c * Math.sqrt(1 - t*t) + b;
 		case "easeInOutCirc":
 			t /= d/2;
-			if (t < 1) return -c/2 * (_Math.sqrt(1 - t*t) - 1) + b;
+			if (t < 1) return -c/2 * (Math.sqrt(1 - t*t) - 1) + b;
 			t -= 2;
-			return c/2 * (_Math.sqrt(1 - t*t) + 1) + b;
+			return c/2 * (Math.sqrt(1 - t*t) + 1) + b;
 	}
 };
 
@@ -964,7 +983,7 @@ lve.fn.session.prototype.create = function(data){
 	this.src = data.src;
 	this.text = data.text;
 	this.className = "";
-	this.focus = !1;
+	this.focus = 0;
 	this.follow_init = {
 		follower: [],
 		following: undefined,
@@ -1182,7 +1201,7 @@ lve.fn.session.prototype.css = function(data){
 			
                     for (var j in _data){
                         // 없는 Style 속성일 경우
-                        if (_keys(item.style).indexOf(j) == -1)
+                        if (Object.keys(item.style).indexOf(j) == -1)
                             continue;
 
                         // Camera 객체가 아니면서
@@ -1242,10 +1261,11 @@ lve.fn.session.prototype.draw = function(){
     var vars = lve_root.vars,
 		initSetting = vars.initSetting,
 
+        self = this,
 		usingCamera = vars.usingCamera,
-		style = this.style,
-		relative = this.relative,
-		hasGradient = _keys(style.gradient).length;
+		style = self.style,
+		relative = self.relative,
+		hasGradient = Object.keys(style.gradient).length;
 
 	/* 지역 함수
 	 * _getRelativeSize : perspective에 따른 객체 크기 반환 (this.relative.width || this.relative.height)
@@ -1254,6 +1274,7 @@ lve.fn.session.prototype.draw = function(){
 	var _getRelativeSize = lve_root.fn.getRelativeSize,
 		_getRelativePosition = lve_root.fn.getRelativePosition;
 
+    // Special Thanks to d_match@naver.com
 	function getGradient(that){
 		var _ctx = ctx,
 			_style = that.style,
@@ -1262,23 +1283,23 @@ lve.fn.session.prototype.draw = function(){
 			_height = that.relative.height,
 			// 그라데이션 정보
 			grd,
-			keys = _keys(_style.gradient),
+			keys = Object.keys(_style.gradient),
 			textAlign_fix = 0;
 
 		if (!keys.length)
 			return;
 
-		lve_root.fn.canvasReset(_style.opacity);
+		lve_root.fn.canvasReset(self);
 
 		// text-align에 따라 위치 보정
 		if (that.type == "text"){
 			switch(_style.textAlign){
 				case "left":{
-					textAlign_fix = _width / 2;
+					textAlign_fix = that.relative.textWidth / 2;
 					break;
 				}
 				case "right":{
-					textAlign_fix = -_width / 2;
+				    textAlign_fix = -that.relative.textWidth / 2;
 					break;
 				}
 			}
@@ -1287,17 +1308,17 @@ lve.fn.session.prototype.draw = function(){
 		switch(_style.gradientType){
 			case "linear":{
 				var deg = _style.gradientDirection % 360 == 0 ? 1 : _style.gradientDirection % 360,
-  					men = _Math.floor(deg / 90) % 4,
+  					men = Math.floor(deg / 90) % 4,
 					spx = [0, _width, _width, 0],
 					spy = [0, 0, _height, _height],
 					sppx = [1, -1, -1, 1],
 					sppy = [1, 1, -1, -1],
 	    
-					rad = deg * _Math.PI / 180,
+					rad = deg * Math.PI / 180,
 	    
-					sin = _Math.sin(rad),
-					cos = _Math.cos(rad),
-					abs = _Math.abs;
+					sin = Math.sin(rad),
+					cos = Math.cos(rad),
+					abs = Math.abs;
   
 				var rs = _height / sin,
 					px = abs(rs * cos),
@@ -1424,7 +1445,7 @@ lve.fn.session.prototype.draw = function(){
 		relative.textWidth = this.__system__.textWidth * relativeScale;
 		relative.left = _getRelativePosition(this, "left");
 		relative.bottom = _getRelativePosition(this, "bottom");
-		relative.blur = style.blur;
+		relative.rotate = style.rotate + usingCamera.style.rotate;
 
 		// blur 처리
 		// focus 기능을 사용 중이라면
@@ -1452,15 +1473,13 @@ lve.fn.session.prototype.draw = function(){
 		relative.textWidth = this.__system__.textWidth;
 		relative.left = style.left;
 		relative.bottom = canvas_elem.height - (style.bottom + style.height);
-		relative.blur = style.blur;
+		relative.rotate = style.rotate;
 	}
+
+	relative.blur = style.blur;
 
 	// 2차 사물 그리기 예외처리
 	if (
-		relative.left + relative.width + relative.width_tmp < 0 || // 화면 왼쪽으로 빠져나감
-		relative.left - relative.width - relative.width_tmp > canvas_elem.width || // 화면 오른쪽으로 빠져나감
-		relative.bottom + relative.height < 0 || // 화면 아래로 빠져나감
-		relative.bottom - relative.height > canvas_elem.height || // 화면 위로 빠져나감
 		relative.width <= 0 || //  width가 0보다 작을 때
 		relative.height <= 0 || // height가 0보다 작을 때
 		relative.width < disappearanceSize || // width가 소멸크기보다 작음
@@ -1470,10 +1489,23 @@ lve.fn.session.prototype.draw = function(){
 	    this.__system__.drawing = !1;
 	    return;
 	}
-		
-	// 캔버시 지우기 및 그림 작업 (필터)
-	lve_root.fn.canvasReset(style.opacity, relative.blur);
-	this.__system__.drawing = !0;
+
+    var canvas_root = Math.sqrt(Math.pow(canvas_elem.width, 2) + Math.pow(canvas_elem.height, 2));
+
+    // 3차 사물 그리기 예외처리
+	if (
+        relative.left + relative.width + relative.width_tmp < -(canvas_root - canvas_elem.width) || // 화면 왼쪽으로 빠져나감
+		relative.left - relative.width - relative.width_tmp > canvas_root + canvas_elem.width || // 화면 오른쪽으로 빠져나감
+		relative.bottom + relative.height < -(canvas_root - canvas_elem.height) || // 화면 아래로 빠져나감
+		relative.bottom - relative.height > canvas_root + canvas_elem.height // 화면 위로 빠져나감
+    ){
+        this.__system__.drawing = !1;
+        return;
+	}
+
+    // 캔버시 지우기 및 그림 작업 (필터, 트랜스레이트)
+	lve_root.fn.canvasReset(this);
+    this.__system__.drawing = !0;
 
 	switch(this.type){
 		case "image":{
@@ -1516,7 +1548,7 @@ lve.fn.session.prototype.draw = function(){
 			}
 
 			if (style.borderWidth){
-				ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2 + relative.borderWidth / 2, 0, _Math.PI * 2);
+				ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2 + relative.borderWidth / 2, 0, Math.PI * 2);
 				ctx.strokeStyle = style.borderColor;
 				ctx.lineWidth = relative.borderWidth;
 				ctx.stroke();
@@ -1527,7 +1559,7 @@ lve.fn.session.prototype.draw = function(){
 			var fillColor = hasGradient ? getGradient(this) : style.color;
 
 			ctx.fillStyle = fillColor;
-			ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2, 0, _Math.PI * 2);
+			ctx.arc(relative.left + relative.width / 2, relative.bottom + relative.width / 2, relative.width / 2, 0, Math.PI * 2);
 			ctx.fill();
 
 			break;
@@ -1579,7 +1611,7 @@ lve.fn.session.prototype.draw = function(){
 			if (style.borderWidth){
 				ctx.strokeStyle = style.borderColor;
 				ctx.lineWidth = relative.borderWidth;
-				ctx.strokeText(this.text, relative.left, relative.bottom, relative.width);
+				ctx.strokeText(this.text, relative.left, relative.bottom + relative.height, relative.width);
 			}
 
 			if (style.position == "absolute"){
@@ -1846,7 +1878,7 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 		            ani_init[j] = _data[j];
 		            ani_init.origin[j] = item.style[j];
 		            ani_init.count[j] = 0;
-		            ani_init.count_max[j] = _Math.ceil(ani_init.duration[j] / 1000 * 60);
+		            ani_init.count_max[j] = Math.ceil(ani_init.duration[j] / 1000 * 60);
 		            ani_init.easing[j] = tmp_easing;
 		        }
 		    }
@@ -1854,7 +1886,7 @@ lve.fn.session.prototype.animate = function(data, duration, easing, callback){
 		    // 콜백 스택 저장
 		    if (typeof tmp_callback == "function") {
 		        lve_root.cache.arr_callback.push({
-		            count: _Math.ceil(tmp_duration / 1000 * 60),
+		            count: Math.ceil(tmp_duration / 1000 * 60),
 		            fn: tmp_callback,
 		            target: item
 		        });
@@ -2290,4 +2322,21 @@ lve.fn.session.prototype.emit = function(e, detail = {}){
             _callback(this.context[i]);
     else
         _callback(this);
+};
+
+// 해당 객체의 문자열 길이를 재정의합니다.
+lve.fn.session.prototype.measureText = function(tarObjName){
+    var arr_kickTar = lve_root.vars.selectorKeyword[tarObjName],
+        _callback = function(item){
+            lve_root.fn.getTextWidth(item);
+            item.emit("measuretext");
+        };
+
+    if (this.context)
+        for (var i = 0, len_i = this.context.length; i < len_i; i++)
+            _callback(this.context[i]);
+    else
+        _callback(this);
+
+    return this;
 };
