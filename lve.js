@@ -1,5 +1,4 @@
 /* Light Visualnovel Engine
- * version 1.8.0
  *
  * Made by izure@naver.com | "LVE.js (C) izure@naver.com 2016. All rights reserved."
  * http://linoaca.com, http://blog.linoaca.com
@@ -96,7 +95,7 @@ lve.root.vars = {
     isStart: !1,
     isRunning: !0,
     usingCamera: {}, // 사용중인 카메라
-    version: "1.8.0" // lve.js 버전
+    version: "1.8.1" // lve.js 버전
 };
 lve.root.cache = {
     arr_callback: [], // 콜백 스택 - callback함수를 저장하는 배열 변수
@@ -153,9 +152,9 @@ lve.root.fn.update = function(timestamp){
         userExtendDrawEnd = initSetting.userExtendDrawEnd;
 
     // 사용자가 초기설정시 extendStart 옵션을 사용했을 시
-    if (!!userExtendStart)
+    if (!!userExtendStart){
         userExtendStart(lve.root);
-
+    }
     // 설정 갱신
     if (isDrawFrame) {
         // 프레임 초기화
@@ -170,29 +169,29 @@ lve.root.fn.update = function(timestamp){
         cache.now = timestamp - (deltaTime % interval);
 
         // 사용자가 초기설정시 extendDrawStart 옵션을 사용했을 시
-        if (!!userExtendDrawStart)
+        if (!!userExtendDrawStart){
             userExtendDrawStart(lve.root);
+        }
     }
-			
     // 해당 씬의 모든 객체 순회
-    for (let i = 0, len_i = arr_object.length; i < len_i; i++){
+    let i = arr_object.length;
+    while (i--){
         let	item = arr_object[i], // 해당 객체
-            item_aniInit_countMax = item.__system__.ani_init.count_max,
+            item_ani_countMax = item.__system__.ani_init.count_max,
             attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
-            attr_Length = item_aniInit_countMax ? Object.keys(item_aniInit_countMax).length : 0; // 해당 객체의 속성 갯수
-
+            attr_length = item.__system__.ani_init.count_length;
         // 사물 그려넣기
         if (
             isDrawFrame &&
             item.scene == usingCamera.scene ||
             item.scene == "anywhere"
-        )
+        ){
             item.draw();
-
+        }
         // 해당 객체가 animating이 아닐 시 제외
-        if (!item_aniInit_countMax)
+        if (!item_ani_countMax){
             continue;
-
+        }
         // 해당 객체가 animating일 경우
         // j를 객체 속성으로 잡음
         for (let j in item.__system__.ani_init){
@@ -200,21 +199,24 @@ lve.root.fn.update = function(timestamp){
             if (item.__system__.ani_init[j] === undefined)
                 continue;
             // 해당 속성이 number형이 아닐 시 예외
-            else if (typeof item.__system__.ani_init[j] != "number")
+            else if (typeof item.__system__.ani_init[j] != "number"){
                 continue;
+            }
 
             let item_style = item.style,
-                item_aniInit = item.__system__.ani_init,
-                item_aniInit_tar = item_aniInit[j],
-                item_aniInit_origin = item_aniInit.origin;
+                item_ani = item.__system__.ani_init,
+                item_ani_tar = item_ani[j],
+                item_ani_origin = item_ani.origin,
+                item_ani_count = item_ani.count,
+                item_ani_countMax_item = item_ani.count_max[j];
 
             // 해당 속성에 animate값 저장
             if (
-                item_aniInit_tar != item_aniInit_origin[j] &&
-                item_aniInit.count[j] < item_aniInit.count_max[j]
+                item_ani_tar != item_ani_origin[j] &&
+                item_ani_count[j] < item_ani_countMax_item
             ){
                 item_style[j] = item.getEasingData(j);
-                item_aniInit.count[j] += (1 * item.timescale);
+                item_ani_count[j] += (1 * item.timescale);
                 item.emit("animateupdate");
             }
 					
@@ -222,23 +224,23 @@ lve.root.fn.update = function(timestamp){
             // isNeedSort 설정
             if (
                 j == "perspective" &&
-                item_aniInit_tar != item_aniInit_origin[j] &&
-                item_aniInit.count[j] < item_aniInit.count_max[j]
-            )
+                item_ani_tar != item_ani_origin[j] &&
+                item_ani_count[j] < item_ani_countMax_item
+            ){
                 // 움직인 것이 카메라일 경우는 예외
                 isNeedSort += (item.type != "camera") - 0;
-
+            }
             // 객체의 해당 속성이 animated 되었을 때
-            if (item_aniInit.count[j] >= item_aniInit.count_max[j]) {
-                item_style[j] = item_aniInit_tar !== undefined ? item_aniInit_tar : item_style[j];
+            if (item_ani_count[j] >= item_ani_countMax_item) {
+                item_style[j] = item_ani_tar !== undefined ? item_ani_tar : item_style[j];
                 attr_translateend++;
-
+                item_ani.count_length--;
                 // animating 속성을 없앰으로써 다시 animated로 체크되는 일이 없도록 예외처리
-                delete item_aniInit[j];
+                delete item_ani_count[j];
             }
 
             // 해당 객체가 모든 속성이 animated 되었을 때
-            if (attr_translateend >= attr_Length){
+            if (attr_translateend >= attr_length){
                 // animateend 이벤트 발생
                 item.__system__.ani_init = {};
                 item.emit("animateend");
@@ -263,39 +265,36 @@ lve.root.fn.update = function(timestamp){
             ctx.font = "15px consolas";
             ctx.fillText("There is no using camera", ctx_width_half, ctx_height_half + 15, ctx_width);
         }
-
         // 사용자가 초기설정시 extendDrawEnd 옵션을 사용했을 시
-        if (!!userExtendDrawEnd)
+        if (!!userExtendDrawEnd){
             userExtendDrawEnd(lve.root);
-
+        }
         // z값이 변경되었을 시 재정렬
         if (isNeedSort){
             cache.isNeedSort = 0;
             arr_object.sort(function(a, b){
-                return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
+                return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
             });
         }
     }
-
     // 콜백함수 체크
     let arr_callback = cache.arr_callback,
         j = arr_callback.length;
 
     while (j--){
         let e = arr_callback[j];
-
-        if (e.count > 0)
+        if (e.count > 0){
             e.count--;
+        }
         else {
             arr_callback.splice(j, 1);
             e.fn(e.target);
         }
     }
-
     // 사용자가 초기설정시 extendEnd 옵션을 사용했을 시
-    if (!!userExtendEnd)
+    if (!!userExtendEnd){
         userExtendEnd(lve.root);
-
+    }
     // update 재귀호출
     if (vars.isRunning){
         window.requestAnimationFrame(lve.root.fn.update);
@@ -309,12 +308,13 @@ lve.root.fn.copyObject = function(data){
     for (let i in data){
         let val = data[i];
 
-        if (typeof val == "object" || typeof val == "array")
+        if (typeof val == "object" || typeof val == "array"){
             ret[i] = _JSON.parse(_JSON.stringify(val))
-        else
+        }
+        else{
             ret[i] = val;
+        }
     }
-
     return ret;
 };
 
@@ -430,7 +430,7 @@ lve.root.fn.eventfilter = function(e){
 
     cache.isNeedSort = 0;
     vars.arr_object.sort(function(a, b){
-        return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
+        return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
     });
 
     // mousemove 이벤트일 경우
@@ -441,8 +441,8 @@ lve.root.fn.eventfilter = function(e){
         arr_targetlst_len = arr_targetlst.length;
     }
 
-    while (arr_targetlst_len--){
-        let item = arr_targetlst[arr_targetlst_len],
+    for (let i = 0; i < arr_targetlst_len; i++){
+        let item = arr_targetlst[i],
             _style = item.style,
             _relative = item.relative,
             _left = _relative.left,
@@ -459,7 +459,7 @@ lve.root.fn.eventfilter = function(e){
             oy > (_top + _relative.height) // 객체가 위에 있을 경우
         ){
             // 마지막 루프까지 순회했으나, 일치한 결과가 없었을 경우
-            if (!arr_targetlst_len){
+            if (i == arr_targetlst_len - 1){
                 // mousemove 이벤트였으나, cache.mouseoverItem 결과값이 남아있을 경우
                 let beforeMouseoverItem = cache.mouseoverItem;
                 if (e.type == "mousemove" && beforeMouseoverItem instanceof lve.root.fn.CreateSession){
@@ -653,8 +653,8 @@ lve.init = function (_data) {
 		// 캔버스 이벤트 할당
 		ce.onclick =
 		ce.ondblclick =
-		ce.onmousedown =
         ce.onmousemove =
+		ce.onmousedown =
 		ce.onmouseup = function(e){
 			fn.eventfilter(e);
 		};
@@ -908,25 +908,25 @@ lve.root.fn.CreateSession = function(selector, context){
 };
 
 lve.root.fn.CreateSession.prototype.getEasingData = function(attr){
-    let aniInit = this.__system__.ani_init;
+    let ani = this.__system__.ani_init;
 
 	// animating이 아닌 객체이거나, 속성 매개변수가 넘어오지 않았을 시
-    if (!aniInit.count_max || !attr)
+    if (!ani.count_max || !attr)
 		return;
 
-    var	tar = aniInit.origin[attr],
-		tar_goal = aniInit[attr];
+    var	tar = ani.origin[attr],
+		tar_goal = ani[attr];
 
 	// 존재하지 않는 속성일 경우
 	if (tar === undefined || tar_goal === undefined)
 		return;
 
 	// t: current time, b: begInnIng value, c: change In value, d: duration
-    var	t = aniInit.count[attr] * 1000 / 60 || 1,
+    var	t = ani.count[attr] * 1000 / 60 || 1,
 		b = tar,
 		c = tar_goal - tar,
-		d = aniInit.duration[attr] || 1,
-		easing = aniInit.easing[attr] || "linear";
+		d = ani.duration[attr] || 1,
+		easing = ani.easing[attr] || "linear";
 
 	switch(easing){
 		case "linear":
@@ -1125,6 +1125,7 @@ lve.root.fn.CreateSession.prototype.create = function(_data){
 	        following: undefined,
 	        relative: {}
 	    },
+        hasGradient: !1,
 	    textWidth: "auto",
 	};
 
@@ -1345,34 +1346,46 @@ lve.root.fn.CreateSession.prototype.css = function(data){
 			
                     for (let j in _data){
                         // 없는 Style 속성일 경우
-                        if (Object.keys(item.style).indexOf(j) == -1)
+                        if (Object.keys(item.style).indexOf(j) == -1){
                             continue;
-
+                        }
                         // Camera 객체가 아니면서
                         // perspective가 변경되었을 시
-                        if (item.type != "camera" && j == "perspective")
+                        if (item.type != "camera" && j == "perspective"){
                             // z-index 재정렬
                             lve.root.cache.isNeedSort++;
+                        }
                         // text 객체이면서 width 속성이 변경되었을 시
                         else if (item.type == "text" && j == "width"){
                             item.style[j] = _data[j];
                             fn.getTextWidth(item);
                             continue;
                         }
+                        // gradient 속성이 변경되었을 시
+                        else if (j == "gradient"){
+                            // gradient가 지정되었다면
+                            if (!!Object.keys(_data[j]).length){
+                                item.__system__.hasGradient = !0;
+                            }
+                            else{
+                                item.__system__.hasGradient = !1;
+                            }
+                        }
 
                         item.style[j] = _data[j];
                     }
-
                     item.emit("cssmodified");
                 }
             };
 
-	    if (this.context)
-	        for (let i = 0, len_i = this.context.length; i < len_i; i++)
-	            _callback(this.context[i]);
-	    else
-	        _callback(this);
-
+        if (this.context){
+            for (let i = 0, len_i = this.context.length; i < len_i; i++){
+                _callback(this.context[i]);
+            }
+        } 
+        else{
+            _callback(this);
+        }
         // 객체 반환
 	    return this;
 	}
@@ -1409,7 +1422,7 @@ lve.root.fn.CreateSession.prototype.draw = function(){
 		usingCamera = vars.usingCamera,
 		style = self.style,
 		relative = self.relative,
-		hasGradient = Object.keys(style.gradient).length;
+		hasGradient = this.__system__.hasGradient;
 
 	/* 지역 함수
 	 * _getRelativeSize : perspective에 따른 객체 크기 반환 (this.relative.width || this.relative.height)
@@ -1635,7 +1648,7 @@ lve.root.fn.CreateSession.prototype.draw = function(){
 	}
 
     // 현재 객체에 회전 예상 정보 담기
-	lve.root.fn.isRotateVisible(this);
+	//lve.root.fn.isRotateVisible(this);
 
     // 3차 사물 그리기 예외처리
     if (
@@ -1649,7 +1662,7 @@ lve.root.fn.CreateSession.prototype.draw = function(){
     }
 
     // 객체 자체의 회전 정보 받아오기
-    lve.root.fn.setRotateObject(this);
+    //lve.root.fn.setRotateObject(this);
     // 캔버시 지우기 및 그림 작업 (필터, 트랜스레이트)
     lve.root.fn.canvasReset(this);
 
@@ -2030,6 +2043,8 @@ lve.root.fn.CreateSession.prototype.animate = function(data, duration, easing, c
 		            ani_init.easing[j] = tmp_easing;
 		        }
 		    }
+		    // animate 속성 갯수값을 저장
+		    ani_init.count_length = Object.keys(ani_init.count_max).length;
 
 		    // 콜백 스택 저장
 		    if (typeof tmp_callback == "function") {
