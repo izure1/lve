@@ -100,7 +100,7 @@
         }
 
         function setRandStar() {
-            for (var i = 0; i < 2000; i++) {
+            for (var i = 0; i < 1000; i++) {
                 let randWidth = Math.random() * 139 * 10000 * 550 * km,
                     randLeft = Math.random() * ry * 0.02,
                     randBottom = Math.random() * ry * 0.02,
@@ -143,7 +143,8 @@
         window.onload = function () {
             lve.init({
                 canvas: document.querySelector("canvas"),
-                backgroundColor: "black"
+				backgroundColor: "black",
+				disappearanceSize: null
             });
 
             lve("camera").create({
