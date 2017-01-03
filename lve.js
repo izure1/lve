@@ -1,9 +1,9 @@
 /* Light Visualnovel Engine
  *
  * Made by izure.org | 'LVE.js (C) izure.org 2016. All rights reserved.'
- * http://linoaca.com, http://blog.linoaca.com
+ * http://izure.org
  *
- * Dev Blog -> http://blog.linoaca.com
+ * Dev Blog -> http://blog.izure.org
  * Dev Center -> http://cafe.naver.com/lvejs
  * Release -> http://github.com/izure1/lve
  * wiki book -> http://cafe.naver.com/lvejs/book5084371
@@ -318,7 +318,7 @@ class CreateSession {
 		this.relative = { origin: { left: 0, bottom: 0 } };
 		this.element = {};
 		this.__system__ = {
-			ani_init: {},
+			ani_init: { callbacks: [] },
 			data: {},
 			drawing: true,
 			events: {},
@@ -1152,10 +1152,9 @@ class CreateSession {
 				ani_init.count_length = Object.keys(ani_init.count_max).length;
 				// 콜백 스택 저장
 				if (typeof callback == 'function') {
-					lve.root.cache.arr_callback.push({
+					ani_init.callbacks.push({
 						count: Math.ceil(_duration / 1000 * 60),
-						fn: callback,
-						target: item
+						fn: callback
 					});
 				}
 
@@ -1178,7 +1177,7 @@ class CreateSession {
 	stop() {
 		const
 			work = (item) => {
-				item.__system__.ani_init = {};
+				item.__system__.ani_init = { callbacks: [] };
 				item.emit('animatestop');
 			};
 
@@ -1201,7 +1200,6 @@ class CreateSession {
 			cache = lve.root.cache,
 
 			arr_object = vars.arr_object,
-			arr_callback = cache.arr_callback,
 			arr_keyword = cache.selectorKeyword,
 			canvas = vars.initSetting.canvas.element,
 			work = (item) => {
@@ -1210,14 +1208,6 @@ class CreateSession {
 				if (typeof item.element.play == 'function') {
 					canvas.appendChild(item.element);
 					canvas.removeChild(item.element);
-				}
-				// animate callback 함수 제거
-				let j = arr_callback.length;
-				while (j--) {
-					let e = arr_callback[j];
-					if (e.target == item) {
-						arr_callback.splice(j, 1);
-					}
 				}
 				// 캔버스 이벤트 삭제
 				const canvasEventObjlst = lve.root.cache.canvasEventKeyword;
@@ -1894,10 +1884,9 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.0.1' // lve.js 버전을 뜻합니다
+	version: '2.0.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
-	arr_callback: [], // 콜백 스택 - callback함수를 저장하는 배열 변수
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
 	canvasEventKeyword: {
 		mousedown: [],
@@ -1975,6 +1964,9 @@ lve.root.fn.update = (timestamp) => {
 	let i = arr_object.length;
 	while (i--) {
 		let item = arr_object[i], // 해당 객체
+			item_timescale = item.timescale,
+			item_ani_callbacks = item.__system__.ani_init.callbacks,
+			item_ani_callbacks_len = item_ani_callbacks.length,
 			item_ani_countMax = item.__system__.ani_init.count_max,
 			attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 			attr_length = item.__system__.ani_init.count_length;
@@ -1987,15 +1979,16 @@ lve.root.fn.update = (timestamp) => {
 			item.draw();
 		}
 		// 해당 객체가 animating이 아닐 시 제외
-		if (!item_ani_countMax) {
+		if (!item_ani_countMax && item_ani_callbacks_len === 0) {
 			continue;
 		}
 		// 해당 객체가 animating일 경우
 		// j를 객체 속성으로 잡음
 		for (let j in item.__system__.ani_init) {
 			// 해당 속성이 animating 아닐 시 예외
-			if (item.__system__.ani_init[j] === undefined)
+			if (item.__system__.ani_init[j] === undefined) {
 				continue;
+			}
 			// 해당 속성이 number형이 아닐 시 예외
 			else if (typeof item.__system__.ani_init[j] != 'number') {
 				continue;
@@ -2012,7 +2005,7 @@ lve.root.fn.update = (timestamp) => {
 				item_ani_count[j] < item_ani_countMax_item
 			) {
 				item_style[j] = item.getEasingData(j);
-				item_ani_count[j] += (1 * item.timescale);
+				item_ani_count[j] += item_timescale;
 				item.emit('animateupdate');
 			}
 			// style.perspective 값이 변경되었을 시
@@ -2036,8 +2029,20 @@ lve.root.fn.update = (timestamp) => {
 			// 해당 객체가 모든 속성이 animated 되었을 때
 			if (attr_translateend >= attr_length) {
 				// animateend 이벤트 발생
-				item.__system__.ani_init = {};
+				const callbacks = item_ani.callbacks.concat();
+				item.__system__.ani_init = { callbacks: callbacks };
 				item.emit('animateend');
+			}
+		}
+		// 애니메이션 콜백 함수 체크
+		while (item_ani_callbacks_len--) {
+			const e = item_ani_callbacks[item_ani_callbacks_len];
+			if (e.count > 0) {
+				e.count -= item_timescale;
+			}
+			else {
+				e.fn(item);
+				item_ani_callbacks.splice(item_ani_callbacks_len, 1);
 			}
 		}
 	}
@@ -2069,20 +2074,6 @@ lve.root.fn.update = (timestamp) => {
 			arr_object.sort((a, b) => {
 				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 			});
-		}
-	}
-	// 콜백함수 체크
-	let arr_callback = cache.arr_callback,
-		j = arr_callback.length;
-
-	while (j--) {
-		const e = arr_callback[j];
-		if (e.count > 0) {
-			e.count--;
-		}
-		else {
-			arr_callback.splice(j, 1);
-			e.fn(e.target);
 		}
 	}
 	// 사용자가 초기설정시 extendEnd 옵션을 사용했을 시
