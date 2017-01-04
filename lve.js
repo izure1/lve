@@ -39,7 +39,7 @@ const lve = (_name) => {
 		// 특수선택자 처리
 		switch (_name) {
 			case '*': {
-				retArray = vars.arr_object;
+				retArray = vars.objects;
 				break;
 			}
 			case '[USING_SCENE]': {
@@ -338,7 +338,7 @@ class CreateSession {
 			}, 1);
 		}
 
-		vars.arr_object.push(this);
+		vars.objects.push(this);
 		cache.isNeedSort++;
 
 		delete this.context;
@@ -667,12 +667,12 @@ class CreateSession {
 		if (
 			relative.perspective <= 0 || // 카메라보다 뒤에 있을 시
 			this.type == 'camera' || // camera타입
-			this.type == 'image' && !this.src || // image타입이며 url이 지정되지 않음
-			this.type == 'video' && !this.src || // video타입이며 url이 지정되지 않음
+			this.type == 'image' && this.src === undefined || // image타입이며 url이 지정되지 않음
+			this.type == 'video' && this.src === undefined || // video타입이며 url이 지정되지 않음
 			this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
 			!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
-			this.type == 'text' && !this.text && typeof this.text != 'string' || // text타입이면서 text가 지정되지 않음
-			this.type == 'text' && !style.fontSize || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
+			this.type == 'text' && !this.text === undefined || // text타입이면서 text가 지정되지 않음
+			this.type == 'text' && style.fontSize === undefined || style.fontSize <= 0 || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
 			relative.opacity <= 0 || // 투명도가 0일 경우
 			style.width <= 0 || // width 가 0일 경우
 			style.height <= 0 || // height 가 0일 경우
@@ -1199,7 +1199,7 @@ class CreateSession {
 			vars = lve.root.vars,
 			cache = lve.root.cache,
 
-			arr_object = vars.arr_object,
+			objects = vars.objects,
 			arr_keyword = cache.selectorKeyword,
 			canvas = vars.initSetting.canvas.element,
 			work = (item) => {
@@ -1225,7 +1225,7 @@ class CreateSession {
 					cache.mouseoverItem = false;
 				}
 				// 객체 삭제
-				arr_object.splice(arr_object.indexOf(item), 1);
+				objects.splice(objects.indexOf(item), 1);
 				arr_keyword[item.name].splice(arr_keyword[item.name].indexOf(item), 1);
 				// 사용중인 카메라 객체일 경우
 				// 카메라 설정 초기화
@@ -1679,9 +1679,8 @@ class CreateSession {
 	}
 
 	// 해당 객체의 문자열 길이를 재정의합니다
-	measureText(tarObjName) {
+	measureText() {
 		const
-			arr_kickTar = lve.root.cache.selectorKeyword[tarObjName],
 			complete = (item) => {
 				if (item.type !== 'text') {
 					console.error('measureText 메서드는 type:text 객체에만 사용할 수 있습니다');
@@ -1841,6 +1840,7 @@ class CreateSession {
 	}
 
 	// >= v2.0.1
+	// 객체의 
 	load(_src, _complete) {
 		if (_src === undefined) {
 			console.error('최소한 1개의 매개변수가 필요합니다. 불러올 src 속성값을 입력하십시오.');
@@ -1877,14 +1877,14 @@ class CreateSession {
  */
 lve.root = {};
 lve.root.vars = {
-	arr_object: [], // 객체정보배열. 생성된 객체들은 이 배열에 style.perspective 속성값에 따라 내림차순으로 정렬됩니다
+	objects: [], // 객체정보배열. 생성된 객체들은 이 배열에 style.perspective 속성값에 따라 내림차순으로 정렬됩니다
 	initSetting: { // 전역 설정. 객체에 지역설정이 되지 않았을 경우, 이 전역 설정을 따릅니다
 		canvas: {}
 	}, // 초기 설정
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.0.2' // lve.js 버전을 뜻합니다
+	version: '2.0.3' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
@@ -1925,7 +1925,7 @@ lve.root.fn.update = (timestamp) => {
 		ctx_height = canvas_elem.height,
 
 		usingCamera = vars.usingCamera,
-		arr_object = vars.arr_object,
+		objects = vars.objects,
 		arr_scene = lve.root.fn.getSceneObj(usingCamera.scene),
 
 		interval = 1000 / (usingCamera.frameLimit || initSetting.frameLimit),
@@ -1961,9 +1961,9 @@ lve.root.fn.update = (timestamp) => {
 		}
 	}
 	// 해당 씬의 모든 객체 순회
-	let i = arr_object.length;
+	let i = objects.length;
 	while (i--) {
-		let item = arr_object[i], // 해당 객체
+		let item = objects[i], // 해당 객체
 			item_timescale = item.timescale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
 			item_ani_callbacks_len = item_ani_callbacks.length,
@@ -2071,7 +2071,7 @@ lve.root.fn.update = (timestamp) => {
 		// z값이 변경되었을 시 재정렬
 		if (isNeedSort) {
 			cache.isNeedSort = 0;
-			arr_object.sort((a, b) => {
+			objects.sort((a, b) => {
 				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 			});
 		}
@@ -2129,7 +2129,6 @@ lve.root.fn.adjustJSON = (_data, _obj) => {
 		}
 		data[i] = isNaN(data_origin - 0) ? data_origin : isNaN(parseData) ? data_origin : parseData;
 	}
-
 	return data;
 };
 
@@ -2202,7 +2201,7 @@ lve.root.fn.eventfilter = (e) => {
 		arr_targetlst_len = arr_targetlst.length;
 
 	cache.isNeedSort = 0;
-	vars.arr_object.sort((a, b) => {
+	vars.objects.sort((a, b) => {
 		return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 	});
 	// mousemove 이벤트일 경우
@@ -2264,11 +2263,11 @@ lve.root.fn.eventfilter = (e) => {
 
 lve.root.fn.getSceneObj = (sceneName) => {
 	const
-		arr_object = lve.root.vars.arr_object,
+		objects = lve.root.vars.objects,
 		arr_ret = [];
 
-	for (let i = 0, j = 0, len_i = arr_object.length; i < len_i; i++) {
-		const item = arr_object[i];
+	for (let i = 0, j = 0, len_i = objects.length; i < len_i; i++) {
+		const item = objects[i];
 		if (item.scene == sceneName)
 			arr_ret[j++] = item;
 	}
@@ -2443,13 +2442,13 @@ lve.pause = () => {
 	const
 		cache = lve.root.cache,
 		vars = lve.root.vars,
-		arr_object = vars.arr_object;
+		objects = vars.objects;
 	// 게임이 재생 중일 경우 정지
 	if (vars.isRunning) {
 		vars.isRunning = false;
-		for (let i = 0, len_i = arr_object.length; i < len_i; i++) {
+		for (let i = 0, len_i = objects.length; i < len_i; i++) {
 			const
-				item = arr_object[i],
+				item = objects[i],
 				item_elem = item.element;
 			// 재생이 가능한 객체일 경우
 			if (typeof item_elem.play != 'function')
@@ -2468,15 +2467,15 @@ lve.play = () => {
 	const
 		cache = lve.root.cache,
 		vars = lve.root.vars,
-		arr_object = vars.arr_object;
+		objects = vars.objects;
 	// 게임이 정지되어 있었을 경우 재생
 	if (!vars.isRunning) {
 		vars.isRunning = true;
 		lve.root.fn.update();
 
-		for (let i = 0, len_i = arr_object.length; i < len_i; i++) {
+		for (let i = 0, len_i = objects.length; i < len_i; i++) {
 			const
-				item = arr_object[i],
+				item = objects[i],
 				item_elem = item.element;
 			// 재생이 가능한 객체일 경우
 			if (typeof item_elem.play != 'function')
