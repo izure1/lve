@@ -285,9 +285,8 @@ class CreateSession {
 		this.scene = data.scene || 'main';
 		this.src = data.src;
 		this.text = data.text;
-		this.timescale = 1;
-		this.className = '';
-		this.focus = 0;
+		this.timescale = data.timescale !== undefined ? data.timescale : 1;
+		this.className = data.className !== undefined ? data.className : "";
 		this.style = {
 			fontSize: 10,
 			fontFamily: 'arial, sans-serif',
@@ -1950,7 +1949,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.1.0' // lve.js 버전을 뜻합니다
+	version: '2.1.1' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
