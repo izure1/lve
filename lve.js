@@ -988,8 +988,8 @@ class CreateSession {
 	// 객체가 해당 사물을 쫒습니다
 	// 객체가 현재 위치를 직접 이동합니다
 	// 여러대의 객체가 선택되었을 시 가장 최초 객체를 선택
-	follow(_tarObjName, _relativePosition = {}) {
-		let tarObj = lve.root.cache.selectorKeyword[_tarObjName],
+	follow(_tarObj, _relativePosition = {}) {
+		let tarObj,
 			tarObj_followInit_follower;
 
 		const
@@ -1027,12 +1027,18 @@ class CreateSession {
 				}
 			};
 
-		// 없는 객체일 경우
-		if (!tarObj.length) {
-			return;
+		if (_tarObj instanceof CreateSession) {
+			tarObj = _tarObj.get(0);
 		}
-		// 있는 객체일 경우, 맨 첫 객체를 팔로잉 타켓으로 지정
-		tarObj = tarObj[0];
+		else {
+			tarObj = lve.root.cache.selectorKeyword[_tarObj];
+			if (tarObj.length > 0) {
+				tarObj = tarObj[0];
+			}
+			else {
+				return;
+			}
+		}
 		tarObj_followInit_follower = tarObj.__system__.follow_init.follower;
 		// 기존 팔로우 초기화
 		lve(this).unfollow();
@@ -1085,17 +1091,24 @@ class CreateSession {
 	}
 
 	// 해당 객체의 follower를 제거합니다
-	kick(_tarObjName) {
+	kick(_tarObj) {
+		let kickTars;
+		if (_tarObj instanceof CreateSession) {
+			kickTars = _tarObj.context || [_tarObj];
+		}
+		else {
+			kickTars = lve.root.cache.selectorKeyword[_tarObj];
+		}
 		const
-			arr_kickTar = lve.root.cache.selectorKeyword[_tarObjName],
 			work = (item) => {
 				const item_follower = item.__system__.follow_init.follower;
 				for (let j = 0, len_j = item_follower.length; j < len_j; j++)
 					// 해당 팔로워가 킥 리스트에 있을 경우
 					// 언팔로우
 					// 팔로워 kicked 이벤트 발생
-					if (arr_kickTar.indexOf(item_follower[j]) != -1)
+					if (kickTars.indexOf(item_follower[j]) != -1) {
 						item_follower[j].unfollow().emit('kicked');
+					}
 				// kick 이벤트 발생
 				item.emit('kick');
 			};
