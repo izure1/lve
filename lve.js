@@ -1264,9 +1264,9 @@ class CreateSession {
 		}
 		// 해당 키워드의 모든 객체가 삭제되었을 경우
 		// 해당 키워드 삭제
-		if (arr_keyword.hasOwnProperty(this_name)) {
-			if (!arr_keyword[this_name].length) {
-				delete arr_keyword[this_name];
+		if (keywords.hasOwnProperty(this_name)) {
+			if (!keywords[this_name].length) {
+				delete keywords[this_name];
 			}
 		}
 	}
