@@ -19,68 +19,69 @@
  *  lve는 상수이며, 함수임과 동시에 이름공간(namespace)이기도 합니다.
  *  그 외 lve.js 에서 필요한 내용은 lve 상수의 속성의 형태로 저장되어 있습니다. 변수형 또는 함수형입니다. ( Ex. lve.root or lve.init() )
  */
-const lve = (_name) => {
-	// Ex. lve()
-	if (!_name) {
-		return;
-	}
-	const
-		root = lve.root,
-		vars = root.vars,
-		cache = root.cache,
-		fn = root.fn,
-		usingCamera = vars.usingCamera;
+const
+	lve = (_name) => {
+		// Ex. lve()
+		if (!_name) {
+			return;
+		}
+		const
+			root = lve.root,
+			vars = root.vars,
+			cache = root.cache,
+			fn = root.fn,
+			usingCamera = vars.usingCamera;
 
-	let retArray = [];
-	// 문자열로 검색할 때
-	// ex.
-	// lve('[USING_CAMERA]')
-	if (typeof _name == 'string') {
-		// 특수선택자 처리
-		switch (_name) {
-			case '*': {
-				retArray = vars.objects;
-				break;
-			}
-			case '[USING_SCENE]': {
-				retArray = fn.getSceneObj(usingCamera.scene);
-				break;
-			}
-			case '[using_scene]': {
-				retArray = fn.getSceneObj(usingCamera.scene);
-				break;
-			}
-			case '[USING_CAMERA]': {
-				retArray = [usingCamera];
-				break;
-			}
-			case '[using_camera]': {
-				retArray = [usingCamera];
-				break;
-			}
-			default: {
-				retArray = cache.selectorKeyword[_name];
-				break;
+		let retArray = [];
+		// 문자열로 검색할 때
+		// ex.
+		// lve('[USING_CAMERA]')
+		if (typeof _name == 'string') {
+			// 특수선택자 처리
+			switch (_name) {
+				case '*': {
+					retArray = vars.objects;
+					break;
+				}
+				case '[USING_SCENE]': {
+					retArray = fn.getSceneObj(usingCamera.scene);
+					break;
+				}
+				case '[using_scene]': {
+					retArray = fn.getSceneObj(usingCamera.scene);
+					break;
+				}
+				case '[USING_CAMERA]': {
+					retArray = [usingCamera];
+					break;
+				}
+				case '[using_camera]': {
+					retArray = [usingCamera];
+					break;
+				}
+				default: {
+					retArray = cache.selectorKeyword[_name];
+					break;
+				}
 			}
 		}
-	}
-    /* 변수로 검색할 때
-     * ex. lve(context)
-     */
-	else {
-		// session으로 검색했을 때
-		if (_name.context) {
-			retArray = _name.context;
-			_name = _name.name;
-		}
-		// 객체로 검색했을 때
+		/* 변수로 검색할 때
+		 * ex. lve(context)
+		 */
 		else {
-			retArray = [_name];
-			_name = _name.name;
+			// session으로 검색했을 때
+			if (_name.context) {
+				retArray = _name.context;
+				_name = _name.name;
+			}
+			// 객체로 검색했을 때
+			else {
+				retArray = [_name];
+				_name = _name.name;
+			}
 		}
-	}
-	return new CreateSession(_name, retArray);
-};
+		return new CreateSession(_name, retArray);
+	};
 
 class CreateSession {
 	/* selector = 사용자가 검색하고자 하는 객체의 name (String type)
@@ -212,7 +213,6 @@ class CreateSession {
 
 		const
 			data = fn.adjustJSON(_data, this),
-			self = this,
 			obj_props = {
 				text: { width: 'auto', height: 'auto', gradientType: 'linear' },
 				image: { width: 'not_ready', height: 'not_ready' },
@@ -223,61 +223,61 @@ class CreateSession {
 		const
 			initStyleProperty = () => {
 				for (let i in obj_props) {
-					if (self.type !== i) {
+					if (this.type !== i) {
 						continue;
 					}
 					for (let j in obj_props[i]) {
-						self.style[j] = obj_props[i][j];
+						this.style[j] = obj_props[i][j];
 					}
 				}
 			},
 			initEventRooms = () => {
 				for (let i = 0, len = consts.arr_event.length; i < len; i++) {
-					self.__system__.events[consts.arr_event[i]] = [];
+					this.__system__.events[consts.arr_event[i]] = [];
 				}
 			},
 			attachElementEvents = () => {
-				const tagname = self.type === 'image' ? 'img' : 'video';
-				if (self.type !== 'image' && self.type !== 'video') {
+				const tagname = this.type === 'image' ? 'img' : 'video';
+				if (this.type !== 'image' && this.type !== 'video') {
 					return;
 				}
-				self.element = document.createElement(tagname);
-				self.element.onload = (e) => {
-					if (self.type === 'image') {
-						if (self.style.width === 'not_ready') {
-							self.style.width = self.element.width || 10;
+				this.element = document.createElement(tagname);
+				this.element.onload = (e) => {
+					if (this.type === 'image') {
+						if (this.style.width === 'not_ready') {
+							this.style.width = this.element.width || 10;
 						}
-						if (self.style.height === 'not_ready') {
-							self.style.height = self.element.height || 10;
+						if (this.style.height === 'not_ready') {
+							this.style.height = this.element.height || 10;
 						}
 					}
-					else if (self.type === 'video') {
-						self.element.oncanplay = (e) => {
-							if (self.element.getAttribute('data-play')) {
-								self.element.removeAttribute('data-play');
-								self.emit('play');
+					else if (this.type === 'video') {
+						this.element.oncanplay = (e) => {
+							if (this.element.getAttribute('data-play')) {
+								this.element.removeAttribute('data-play');
+								this.emit('play');
 							}
 							element.onplay = () => {
-								self.emit('play');
+								this.emit('play');
 							}
 						};
-						self.element.onended = () => {
-							self.emit('ended');
+						this.element.onended = () => {
+							this.emit('ended');
 						};
 					}
-					self.emit('load');
+					this.emit('load');
 				};
-				if (self.src) {
-					self.element.src = self.src;
+				if (this.src) {
+					this.element.src = this.src;
 				}
 			},
 			insertNameKeyword = () => {
-				if (cache.selectorKeyword[self.name] === undefined) {
-					cache.selectorKeyword[self.name] = [];
+				if (cache.selectorKeyword[this.name] === undefined) {
+					cache.selectorKeyword[this.name] = [];
 				}
-				cache.selectorKeyword[self.name].push(self);
-				cache.selectorKeyword[`[PRIMARY=${self.primary}]`] = [self];
-				cache.selectorKeyword[`[primary=${self.primary}]`] = [self];
+				cache.selectorKeyword[this.name].push(this);
+				cache.selectorKeyword[`[PRIMARY=${this.primary}]`] = [this];
+				cache.selectorKeyword[`[primary=${this.primary}]`] = [this];
 			};
 
 		this.primary = cache.primary++;
@@ -337,8 +337,8 @@ class CreateSession {
 		insertNameKeyword();
 
 		if (this.type === 'text' && this.style.width === 'auto') {
-			setTimeout(function () {
-				lve.root.fn.getTextWidth(self);
+			setTimeout(() => {
+				lve.root.fn.getTextWidth(this);
 			}, 1);
 		}
 		cache.isNeedSort++;
@@ -549,10 +549,9 @@ class CreateSession {
 			vars = lve.root.vars,
 			initSetting = vars.initSetting,
 
-			self = this,
 			usingCamera = vars.usingCamera,
-			style = self.style,
-			relative = self.relative,
+			style = this.style,
+			relative = this.relative,
 			hasGradient = this.__system__.hasGradient;
 
 		/* 지역 함수
@@ -563,97 +562,98 @@ class CreateSession {
 			_getRelativePosition = lve.root.fn.getRelativePosition;
 
 		// Special Thanks to d_match@naver.com
-		function getGradient(that) {
-			let _ctx = ctx,
-				style = that.style,
-				relative = that.relative,
-				width = that.relative.width,
-				height = that.relative.height,
-				// 그라데이션 정보
-				grd,
-				keys = Object.keys(style.gradient),
-				textAlign_fix = 0;
+		const
+			getGradient = () => {
+				let _ctx = ctx,
+					style = this.style,
+					relative = this.relative,
+					width = this.relative.width,
+					height = this.relative.height,
+					// 그라데이션 정보
+					grd,
+					keys = Object.keys(style.gradient),
+					textAlign_fix = 0;
 
-			if (!keys.length) {
-				return;
-			}
-			fn.canvasReset(self);
-			// text-align에 따라 위치 보정
-			if (that.type == 'text') {
-				switch (style.textAlign) {
-					case 'left': {
-						if (that.style.gradientType === 'linear') {
-							textAlign_fix = that.relative.textWidth / 2;
-						}
-						else {
-							textAlign_fix = -(that.relative.width / 2) + (that.relative.textWidth / 2);
-						}
-						break;
-					}
-					case 'right': {
-						if (that.style.gradientType === 'linear') {
-							textAlign_fix = -that.relative.textWidth / 2;
-						}
-						else {
-							textAlign_fix = (that.relative.width / 2) - (that.relative.textWidth / 2);
-						}
-						break;
-					}
-				}
-			}
-
-			switch (style.gradientType) {
-				case 'linear': {
-					let deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
-						men = Math.floor(deg / 90) % 4,
-						spx = [0, width, width, 0],
-						spy = [0, 0, height, height],
-						sppx = [1, -1, -1, 1],
-						sppy = [1, 1, -1, -1],
-
-						rad = deg * Math.PI / 180,
-
-						sin = Math.sin(rad),
-						cos = Math.cos(rad),
-						abs = Math.abs;
-
-					let rs = height / sin,
-						px = abs(rs * cos),
-						rd = (width - px) * px / rs,
-						r = rs + rd;
-
-					let x0 = spx[men],
-						y0 = spy[men],
-						x1 = x0 + abs(r * cos) * sppx[men],
-						y1 = y0 + abs(r * sin) * sppy[men];
-
-					grd = _ctx.createLinearGradient(x0 + relative.left + textAlign_fix, y0 + relative.bottom, x1 + relative.left + textAlign_fix, y1 + relative.bottom);
-					break;
-				}
-				case 'radial': {
-					let relativeWidth_half = width / 2,
-						relativeHeight_half = height / 2,
-
-						ret_left = relative.left + relativeWidth_half + textAlign_fix,
-						ret_bottom = relative.bottom + relativeHeight_half
-
-					grd = _ctx.createRadialGradient(ret_left, ret_bottom, 0, ret_left, ret_bottom, relativeWidth_half);
-					break;
-				}
-			}
-
-			for (let i in style.gradient) {
-				let pos = i / 100,
-					color = style.gradient[i] || 'transparent';
-
-				if (isNaN(pos)) {
+				if (!keys.length) {
 					return;
 				}
-				grd.addColorStop(pos, color);
-			}
+				fn.canvasReset(this);
+				// text-align에 따라 위치 보정
+				if (this.type == 'text') {
+					switch (style.textAlign) {
+						case 'left': {
+							if (this.style.gradientType === 'linear') {
+								textAlign_fix = this.relative.textWidth / 2;
+							}
+							else {
+								textAlign_fix = -(this.relative.width / 2) + (this.relative.textWidth / 2);
+							}
+							break;
+						}
+						case 'right': {
+							if (this.style.gradientType === 'linear') {
+								textAlign_fix = -this.relative.textWidth / 2;
+							}
+							else {
+								textAlign_fix = (this.relative.width / 2) - (this.relative.textWidth / 2);
+							}
+							break;
+						}
+					}
+				}
 
-			return grd;
-		}
+				switch (style.gradientType) {
+					case 'linear': {
+						let deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
+							men = Math.floor(deg / 90) % 4,
+							spx = [0, width, width, 0],
+							spy = [0, 0, height, height],
+							sppx = [1, -1, -1, 1],
+							sppy = [1, 1, -1, -1],
+
+							rad = deg * Math.PI / 180,
+
+							sin = Math.sin(rad),
+							cos = Math.cos(rad),
+							abs = Math.abs;
+
+						let rs = height / sin,
+							px = abs(rs * cos),
+							rd = (width - px) * px / rs,
+							r = rs + rd;
+
+						let x0 = spx[men],
+							y0 = spy[men],
+							x1 = x0 + abs(r * cos) * sppx[men],
+							y1 = y0 + abs(r * sin) * sppy[men];
+
+						grd = _ctx.createLinearGradient(x0 + relative.left + textAlign_fix, y0 + relative.bottom, x1 + relative.left + textAlign_fix, y1 + relative.bottom);
+						break;
+					}
+					case 'radial': {
+						let relativeWidth_half = width / 2,
+							relativeHeight_half = height / 2,
+
+							ret_left = relative.left + relativeWidth_half + textAlign_fix,
+							ret_bottom = relative.bottom + relativeHeight_half
+
+						grd = _ctx.createRadialGradient(ret_left, ret_bottom, 0, ret_left, ret_bottom, relativeWidth_half);
+						break;
+					}
+				}
+
+				for (let i in style.gradient) {
+					let pos = i / 100,
+						color = style.gradient[i] || 'transparent';
+
+					if (isNaN(pos)) {
+						return;
+					}
+					grd.addColorStop(pos, color);
+				}
+
+				return grd;
+			};
 
 		const disappearanceSight = usingCamera.disappearanceSight || initSetting.disappearanceSight;
 		// 상대적 거리 가져오기
@@ -844,7 +844,7 @@ class CreateSession {
 					ctx.lineWidth = relative.borderWidth;
 					ctx.stroke();
 				}
-				let fillColor = hasGradient ? getGradient(this) : style.color;
+				let fillColor = hasGradient ? getGradient() : style.color;
 
 				ctx.beginPath();
 				ctx.fillStyle = fillColor;
@@ -1900,7 +1900,8 @@ class CreateSession {
 		}
 
 		for (let i = 0, len = tarObj.length; i < len; i++) {
-			const newObj = lve(this.name).create({
+			const
+				newObj = lve(this.name).create({
 					type: tarObj[i].type
 				});
 			const
@@ -1949,7 +1950,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.0.3' // lve.js 버전을 뜻합니다
+	version: '2.1.0' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
