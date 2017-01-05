@@ -15,7 +15,7 @@ function setUnits() {
 			text: i
 		}).css({
 			fontSize: 20
-		});
+		}).addClass('unit');
 
 		if (i !== 0) {
 			lve(`unit_${i}`).follow(`unit_${i - 1}`, {

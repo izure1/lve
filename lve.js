@@ -267,7 +267,9 @@ class CreateSession {
 					}
 					self.emit('load');
 				};
-				self.element.src = self.src;
+				if (self.src) {
+					self.element.src = self.src;
+				}
 			},
 			insertNameKeyword = () => {
 				if (cache.selectorKeyword[self.name] === undefined) {
@@ -327,6 +329,8 @@ class CreateSession {
 			textWidth: 'auto',
 		};
 
+		vars.objects.push(this);
+
 		initStyleProperty();
 		initEventRooms();
 		attachElementEvents();
@@ -337,8 +341,6 @@ class CreateSession {
 				lve.root.fn.getTextWidth(self);
 			}, 1);
 		}
-
-		vars.objects.push(this);
 		cache.isNeedSort++;
 
 		delete this.context;
@@ -1213,7 +1215,7 @@ class CreateSession {
 			cache = lve.root.cache,
 
 			objects = vars.objects,
-			arr_keyword = cache.selectorKeyword,
+			keywords = cache.selectorKeyword,
 			canvas = vars.initSetting.canvas.element,
 			work = (item) => {
 				// play 속성을 가지고 있는 객체일 경우
@@ -1239,15 +1241,15 @@ class CreateSession {
 				}
 				// 객체 삭제
 				objects.splice(objects.indexOf(item), 1);
-				arr_keyword[item.name].splice(arr_keyword[item.name].indexOf(item), 1);
+				keywords[item.name].splice(keywords[item.name].indexOf(item), 1);
 				// 사용중인 카메라 객체일 경우
 				// 카메라 설정 초기화
 				if (item == vars.usingCamera) {
 					vars.usingCamera = {};
 				}
 				// 키워드 삭제
-				delete arr_keyword[`[PRIMARY=${item.primary}]`];
-				delete arr_keyword[`[primary=${item.primary}]`];
+				delete keywords[`[PRIMARY=${item.primary}]`];
+				delete keywords[`[primary=${item.primary}]`];
 			},
 			this_name = this.name;
 		// 객체정보배열을 돌면서 일괄삭제 후
@@ -1876,6 +1878,56 @@ class CreateSession {
 			complete(this);
 		}
 	}
+
+	// >= v2.0.3
+	from(_tarObj) {
+		let tarObj,
+			retObj = { name: this.name, context: [] };
+
+		if (_tarObj === undefined) {
+			return;
+		}
+		if (_tarObj instanceof CreateSession) {
+			if (_tarObj.context) {
+				tarObj = _tarObj.context;
+			}
+			else {
+				tarObj = [_tarObj];
+			}
+		}
+		else {
+			tarObj = lve.root.cache.selectorKeyword[_tarObj];
+		}
+
+		for (let i = 0, len = tarObj.length; i < len; i++) {
+			const newObj = lve(this.name).create({
+					type: tarObj[i].type
+				});
+			const
+				oldObj_deepcopy = lve.root.fn.copyObject(tarObj[i]),
+				newObj_primary = newObj.primary,
+				newObj_i = lve.root.vars.objects.indexOf(newObj),
+				keyword_name_i = lve.root.cache.selectorKeyword[this.name].indexOf(newObj);
+
+			// init method copied object
+			oldObj_deepcopy.__proto__ = newObj.__proto__;
+			oldObj_deepcopy.primary = newObj_primary;
+			// update object's properties in selectorKeyword['name']
+			lve.root.cache.selectorKeyword[this.name][keyword_name_i] = oldObj_deepcopy;
+			// update object`s properties in selectorKeyword['primary']
+			lve.root.cache.selectorKeyword[`[primary=${newObj_primary}]`] = [oldObj_deepcopy];
+			lve.root.cache.selectorKeyword[`[PRIMARY=${newObj_primary}]`] = [oldObj_deepcopy];
+			// update object`s properties in lve.root.vars.objects
+			lve.root.vars.objects[newObj_i] = oldObj_deepcopy;
+			// element > deep copy from origin object
+			if (tarObj[i].element instanceof HTMLElement) {
+				oldObj_deepcopy.element = tarObj[i].element.cloneNode(true);
+			}
+			// push return object
+			retObj.context[i] = oldObj_deepcopy;
+		}
+		return lve(retObj);
+	}
 };
 
 /*  lve.root
@@ -2100,19 +2152,36 @@ lve.root.fn.update = (timestamp) => {
 };
 
 lve.root.fn.copyObject = (_data) => {
-	const ret = {};
-	for (let i in _data) {
-		const val = _data[i];
-		if (typeof val == 'object' || typeof val == 'array') {
-			ret[i] = JSON.parse(
-				JSON.stringify(val)
-			)
+	let data;
+	if (typeof _data == 'object') {
+		if (_data instanceof HTMLElement) {
+			data = _data.cloneNode(true);
+			return data;
+		}
+		else if (Array.isArray(_data)) {
+			data = [];
 		}
 		else {
-			ret[i] = val;
+			data = {};
+		}
+
+		for (let i in _data) {
+			const value = _data[i];
+			if (
+				typeof value == 'object' &&
+				value instanceof CreateSession === false
+			) {
+				data[i] = lve.root.fn.copyObject(value);
+			}
+			else {
+				data[i] = value;
+			}
 		}
 	}
-	return ret;
+	else {
+		data = _data;
+	}
+	return data;
 };
 
 lve.root.fn.adjustProperty = (data) => {
