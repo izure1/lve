@@ -236,41 +236,6 @@ class CreateSession {
 					this.__system__.events[consts.arr_event[i]] = [];
 				}
 			},
-			attachElementEvents = () => {
-				const tagname = this.type === 'image' ? 'img' : 'video';
-				if (this.type !== 'image' && this.type !== 'video') {
-					return;
-				}
-				this.element = document.createElement(tagname);
-				this.element.onload = (e) => {
-					if (this.type === 'image') {
-						if (this.style.width === 'not_ready') {
-							this.style.width = this.element.width || 10;
-						}
-						if (this.style.height === 'not_ready') {
-							this.style.height = this.element.height || 10;
-						}
-					}
-					else if (this.type === 'video') {
-						this.element.oncanplay = (e) => {
-							if (this.element.getAttribute('data-play')) {
-								this.element.removeAttribute('data-play');
-								this.emit('play');
-							}
-							element.onplay = () => {
-								this.emit('play');
-							}
-						};
-						this.element.onended = () => {
-							this.emit('ended');
-						};
-					}
-					this.emit('load');
-				};
-				if (this.src) {
-					this.element.src = this.src;
-				}
-			},
 			insertNameKeyword = () => {
 				if (cache.selectorKeyword[this.name] === undefined) {
 					cache.selectorKeyword[this.name] = [];
@@ -332,7 +297,7 @@ class CreateSession {
 
 		initStyleProperty();
 		initEventRooms();
-		attachElementEvents();
+		lve.root.fn.initElement(this);
 		insertNameKeyword();
 
 		if (this.type === 'text' && this.style.width === 'auto') {
@@ -350,64 +315,67 @@ class CreateSession {
 		// 속성 적용
 		if (typeof data == 'object') {
 			const
-				fn = lve.root.fn,
 				work = (item) => {
 					// 매개변수가 Object형일 경우
 					// 속성 대입
 					if (typeof data == 'object') {
-						const _data = fn.adjustJSON(data, item);
-
+						const _data = lve.root.fn.adjustJSON(data, item);
 						for (let j in _data) {
-							const newAttrVal = _data[j];
-							// image 타입이면서 src 속성을 변경할 시
-							if (item.type == 'image' && j == 'src') {
-								item.src = newAttrVal;
-								item.element.src = newAttrVal;
-								continue;
-							}
-							// text 타입이면서 text 속성을 변경할 시
-							else if (item.type == 'text' && j == 'text') {
-								item[j] = newAttrVal;
-								fn.getTextWidth(item);
-								continue;
-							}
-							// scene을 변경할 때
-							else if (j == 'scene') {
-								if (!fn.checkCamera()) {
-									item[j] = newAttrVal;
-									continue;
+							const value = _data[j];
+							switch (j) {
+								case 'type': {
+									item.type = value;
+									lve.root.fn.initElement(item);
+									break;
 								}
-
-								let usingCamera = lve.root.vars.usingCamera;
-
-								if (item != usingCamera) {
-									if (item.type == 'video' && newAttrVal != usingCamera.scene)
-										item.element.muted = true;
+								case 'src': {
+									item.src = value;
+									lve.root.fn.initElement(item);
+									break;
 								}
-
-								else if (item == usingCamera) {
-									let arr_video_old = fn.getSceneObj(item.scene),
-										arr_video_new = lve.root.fn.getSceneObj(newAttrVal);
-
-									for (let i = 0, len_i = arr_video_old.length; i < len_i; i++) {
-										let _item = arr_video_old[i];
-
-										if (_item.type == 'video')
-											_item.element.muted = true;
+								case 'text': {
+									item.text = value;
+									lve.root.fn.getTextWidth(item);
+									break;
+								}
+								case 'scene': {
+									if (lve.root.fn.checkCamera() === false) {
+										item[j] = value;
+										break;
 									}
 
-									for (let i = 0, len_i = arr_video_new.length; i < len_i; i++) {
-										let _item = arr_video_new[i];
+									let usingCamera = lve.root.vars.usingCamera;
 
-										if (_item.type == 'video')
-											_item.element.muted = false;
+									if (item != usingCamera) {
+										if (item.type == 'video' && value != usingCamera.scene)
+											item.element.muted = true;
+									}
+
+									else if (item == usingCamera) {
+										let arr_video_old = fn.getSceneObj(item.scene),
+											arr_video_new = lve.root.fn.getSceneObj(value);
+
+										for (let i = 0, len_i = arr_video_old.length; i < len_i; i++) {
+											let _item = arr_video_old[i];
+
+											if (_item.type == 'video')
+												_item.element.muted = true;
+										}
+
+										for (let i = 0, len_i = arr_video_new.length; i < len_i; i++) {
+											let _item = arr_video_new[i];
+
+											if (_item.type == 'video')
+												_item.element.muted = false;
+										}
 									}
 								}
+								default: {
+									item[j] = value;
+									break;
+								}
 							}
-
-							item[j] = newAttrVal;
 						}
-
 						item.emit('attrmodified');
 					}
 				};
@@ -1865,7 +1833,9 @@ class CreateSession {
 			src = typeof _src == 'function' ? _src(this) : _src,
 			complete = (_item) => {
 				_item.src = src;
-				_item.element.src = src;
+				_item.style.width = 'not_ready';
+				_item.style.height = 'not_ready';
+				lve.root.fn.initElement(_item, _complete);
 			};
 
 		if (this.context) {
@@ -1949,7 +1919,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.1.1' // lve.js 버전을 뜻합니다
+	version: '2.1.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
@@ -2455,6 +2425,46 @@ lve.root.fn.canvasReset = (_item = { style: {}, relative: {} }) => {
 
 	ctx.globalAlpha = opacity;
 	ctx.filter = blur > 0 ? `blur(${blur}px)` : 'none';
+};
+
+lve.root.fn.initElement = (that, _onload) => {
+	const tagname = that.type === 'image' ? 'img' : 'video';
+	if (that.type !== 'image' && that.type !== 'video') {
+		that.element = {};
+		return;
+	}
+	that.element = document.createElement(tagname);
+	that.element.onload = (e) => {
+		if (that.type === 'image') {
+			if (that.style.width === 'not_ready') {
+				that.style.width = that.element.width || 10;
+			}
+			if (that.style.height === 'not_ready') {
+				that.style.height = that.element.height || 10;
+			}
+		}
+		else if (that.type === 'video') {
+			that.element.oncanplay = (e) => {
+				if (that.element.getAttribute('data-play')) {
+					that.element.removeAttribute('data-play');
+					that.emit('play');
+				}
+				element.onplay = () => {
+					that.emit('play');
+				}
+			};
+			that.element.onended = () => {
+				that.emit('ended');
+			};
+		}
+		if (_onload) {
+			that.emit('load');
+			_onload(that);
+		}
+	};
+	if (that.src) {
+		that.element.src = that.src;
+	}
 };
 
 
