@@ -1,7 +1,11 @@
 {
   "ExpandedNodes": [
     "",
-    "\\Sample"
+    "\\Sample",
+    "\\Sample\\Follows",
+    "\\Sample\\Hello World",
+    "\\Sample\\image",
+    "\\Sample\\Universe"
   ],
   "SelectedNode": "\\lve.js",
   "PreviewInSolutionExplorer": false

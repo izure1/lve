@@ -1937,7 +1937,10 @@ lve.root.cache = {
 	selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됩니다
 	mouseoverItem: false, // 현재 mouseover 되어있는 객체가 저장됩니다
 	isNeedSort: 0,
+	loseTime: 0,
+	lastDraw: 0,
 	now: 0,
+	pauseTime: 0,
 	primary: 1
 };
 lve.root.const = {
@@ -1946,7 +1949,7 @@ lve.root.const = {
 	arr_event: ['animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'custom', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load'], // 사용할 수 객체 이벤트입니다
 };
 lve.root.fn = {};
-lve.root.fn.update = (timestamp) => {
+lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	const
 		cache = lve.root.cache,
 		vars = lve.root.vars,
@@ -1961,10 +1964,10 @@ lve.root.fn.update = (timestamp) => {
 
 		usingCamera = vars.usingCamera,
 		objects = vars.objects,
-		arr_scene = lve.root.fn.getSceneObj(usingCamera.scene),
 
-		interval = 1000 / (usingCamera.frameLimit || initSetting.frameLimit),
-		deltaTime = timestamp - cache.now,
+		fps = 1000 / (usingCamera.frameLimit || initSetting.frameLimit),
+		interval = timestamp - (cache.loseTime + cache.now),
+		delayscale = interval / (1000 / 60),
 
 		userExtendStart = initSetting.userExtendStart,
 		userExtendEnd = initSetting.userExtendEnd,
@@ -1972,14 +1975,17 @@ lve.root.fn.update = (timestamp) => {
 		userExtendDrawEnd = initSetting.userExtendDrawEnd;
 
 	let isNeedSort = cache.isNeedSort,
-		isDrawFrame = deltaTime > interval;
+		isDrawFrame = fps < timestamp - cache.lastDraw;
 
+	// 현재 시각 갱신
+	cache.now += interval;
 	// 사용자가 초기설정시 extendStart 옵션을 사용했을 시
 	if (!!userExtendStart) {
 		userExtendStart(lve.root);
 	}
 	// 설정 갱신
 	if (isDrawFrame) {
+		cache.lastDraw = performance.now();
 		// 프레임 초기화
 		ctx.restore();
 		ctx.save();
@@ -1988,8 +1994,6 @@ lve.root.fn.update = (timestamp) => {
 		ctx.fillStyle = usingCamera.backgroundColor || initSetting.backgroundColor;
 		ctx.clearRect(0, 0, ctx_width, ctx_height);
 		ctx.fillRect(0, 0, ctx_width, ctx_height);
-		// 현재 시각 갱신
-		cache.now = timestamp - (deltaTime % interval);
 		// 사용자가 초기설정시 extendDrawStart 옵션을 사용했을 시
 		if (!!userExtendDrawStart) {
 			userExtendDrawStart(lve.root);
@@ -1999,7 +2003,7 @@ lve.root.fn.update = (timestamp) => {
 	let i = objects.length;
 	while (i--) {
 		let item = objects[i], // 해당 객체
-			item_timescale = item.timescale,
+			item_timescale = item.timescale * delayscale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
 			item_ani_callbacks_len = item_ani_callbacks.length,
 			item_ani_countMax = item.__system__.ani_init.count_max,
@@ -2489,21 +2493,18 @@ lve.init = (_data) => {
 	initSetting.disappearanceSight = data.disappearanceSight !== undefined ? data.disappearanceSight + initSetting.scaleDistance : undefined; // 소멸 시야
 	initSetting.frameLimit = data.frameLimit !== undefined ? data.frameLimit : initSetting.frameLimit ? initSetting.frameLimit : 60; // 프레임 제한
 	initSetting.backgroundColor = data.backgroundColor !== undefined ? data.backgroundColor : initSetting.backgroundColor ? initSetting.backgroundColor : 'white'; // 캔버스 배경색
-
 	// 필수 선언
 	// 이는 객체의 지역설정으로 쓰일 수 없음
 	if (data.canvas) {
 		initSetting.canvas.context = data.canvas.getContext('2d');
 		initSetting.canvas.element = data.canvas;
 	}
-
 	lve.root.fn.canvasReset();
 	// 사용자 보조 선언
 	initSetting.userExtendStart = data.extendStart || initSetting.userExtendStart;
 	initSetting.userExtendEnd = data.extendEnd || initSetting.userExtendEnd;
 	initSetting.userExtendDrawStart = data.extendDrawStart || initSetting.userExtendDrawStart;
 	initSetting.userExtendDrawEnd = data.extendDrawEnd || initSetting.userExtendDrawEnd;
-
 	// 시스템 보조 선언
 	initSetting.success = true;
 
@@ -2522,25 +2523,21 @@ lve.init = (_data) => {
 			};
 
 		setTimeout(() => {
+			lve.root.cache.loseTime = performance.now();
 			lve.root.vars.isStart = true;
 			lve.root.fn.update();
 		}, 1);
 	}
-
 	return true;
 };
 
 lve.pause = () => {
-	const
-		cache = lve.root.cache,
-		vars = lve.root.vars,
-		objects = vars.objects;
-	// 게임이 재생 중일 경우 정지
-	if (vars.isRunning) {
-		vars.isRunning = false;
-		for (let i = 0, len_i = objects.length; i < len_i; i++) {
+	if (lve.root.vars.isRunning) {
+		lve.root.cache.pauseTime = performance.now();
+		lve.root.vars.isRunning = false;
+		for (let i = 0, len_i = lve.root.vars.objects.length; i < len_i; i++) {
 			const
-				item = objects[i],
+				item = lve.root.vars.objects[i],
 				item_elem = item.element;
 			// 재생이 가능한 객체일 경우
 			if (typeof item_elem.play != 'function')
@@ -2556,18 +2553,14 @@ lve.pause = () => {
 };
 
 lve.play = () => {
-	const
-		cache = lve.root.cache,
-		vars = lve.root.vars,
-		objects = vars.objects;
-	// 게임이 정지되어 있었을 경우 재생
-	if (!vars.isRunning) {
-		vars.isRunning = true;
+	if (!lve.root.vars.isRunning) {
+		lve.root.cache.loseTime += (performance.now() - lve.root.cache.pauseTime);
+		lve.root.vars.isRunning = true;
 		lve.root.fn.update();
 
-		for (let i = 0, len_i = objects.length; i < len_i; i++) {
+		for (let i = 0, len_i = lve.root.vars.objects.length; i < len_i; i++) {
 			const
-				item = objects[i],
+				item = lve.root.vars.objects[i],
 				item_elem = item.element;
 			// 재생이 가능한 객체일 경우
 			if (typeof item_elem.play != 'function')
