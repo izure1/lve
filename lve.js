@@ -1919,7 +1919,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.1.2' // lve.js 버전을 뜻합니다
+	version: '2.1.3' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
@@ -2581,8 +2581,8 @@ lve.fullScreen = (extend) => {
 		canvas_elem = lve.root.vars.initSetting.canvas.element,
 		// 증가 비율이 짧은 면을 기준으로 잡음
 		screenScale = [
-			window.screen.availWidth / canvas_elem.width,
-			window.screen.availHeight / canvas_elem.height
+			window.screen.width / canvas_elem.width,
+			window.screen.height / canvas_elem.height
 		].sort((a, b) => {
 			return a - b;
 		})[0],
