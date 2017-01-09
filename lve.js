@@ -98,14 +98,16 @@ class CreateSession {
 		if (!ani.count_max || !_attr) {
 			return;
 		}
-		let tar = ani.origin[_attr],
+		let
+			tar = ani.origin[_attr],
 			tar_goal = ani[_attr];
 		// 존재하지 않는 속성일 경우
 		if (tar === undefined || tar_goal === undefined) {
 			return;
 		}
 		// t: current time, b: begInnIng value, c: change In value, d: duration
-		let t = ani.count[_attr] * 1000 / 60 || 1,
+		let
+			t = ani.count[_attr] * 1000 / 60 || 1,
 			b = tar,
 			c = tar_goal - tar,
 			d = ani.duration[_attr] || 1,
@@ -352,7 +354,8 @@ class CreateSession {
 									}
 
 									else if (item == usingCamera) {
-										let arr_video_old = fn.getSceneObj(item.scene),
+										let
+											arr_video_old = fn.getSceneObj(item.scene),
 											arr_video_new = lve.root.fn.getSceneObj(value);
 
 										for (let i = 0, len_i = arr_video_old.length; i < len_i; i++) {
@@ -428,7 +431,6 @@ class CreateSession {
 					// 스타일 속성 대입
 					if (typeof _data == 'object') {
 						let data = fn.adjustJSON(_data, item);
-
 						// absolute, fixed 이외의 position 속성값을 가질 경우
 						if (
 							data.position !== undefined &&
@@ -487,15 +489,16 @@ class CreateSession {
 		}
 		// 속성 반환
 		else {
-			let ret = [],
+			let rets = [],
 				work = (item) => {
 					// 매개변수가 없을 때
 					// 선택된 모든 객체의 style 속성 반환
-					if (!_data)
-						ret.push(item.style);
-
-					else if (typeof _data == 'string')
-						ret.push(item.style[_data]);
+					if (!_data) {
+						rets.push(item.style);
+					}
+					else if (typeof _data == 'string') {
+						rets.push(item.style[_data]);
+					}
 				};
 
 			if (this.context) {
@@ -507,12 +510,13 @@ class CreateSession {
 				work(this);
 			}
 			// 결과 반환
-			return ret;
+			return rets;
 		}
 	}
 
 	draw() {
-		let fn = lve.root.fn,
+		let
+			fn = lve.root.fn,
 			vars = lve.root.vars,
 			initSetting = vars.initSetting,
 
@@ -525,13 +529,15 @@ class CreateSession {
 		 * _getRelativeSize : perspective에 따른 객체 크기 반환 (this.relative.width || this.relative.height)
 		 * _getRelativePosition : perspective에 따른 객체 위치 반환 (this.relative.left || this.relative.bottom)
 		 */
-		let _getRelativeSize = lve.root.fn.getRelativeSize,
+		let
+			_getRelativeSize = lve.root.fn.getRelativeSize,
 			_getRelativePosition = lve.root.fn.getRelativePosition;
 
 		// Special Thanks to d_match@naver.com
 		const
 			getGradient = () => {
-				let _ctx = ctx,
+				let
+					_ctx = ctx,
 					style = this.style,
 					relative = this.relative,
 					width = this.relative.width,
@@ -571,7 +577,8 @@ class CreateSession {
 
 				switch (style.gradientType) {
 					case 'linear': {
-						let deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
+						let
+							deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
 							men = Math.floor(deg / 90) % 4,
 							spx = [0, width, width, 0],
 							spy = [0, 0, height, height],
@@ -584,12 +591,14 @@ class CreateSession {
 							cos = Math.cos(rad),
 							abs = Math.abs;
 
-						let rs = height / sin,
+						let
+							rs = height / sin,
 							px = abs(rs * cos),
 							rd = (width - px) * px / rs,
 							r = rs + rd;
 
-						let x0 = spx[men],
+						let
+							x0 = spx[men],
 							y0 = spy[men],
 							x1 = x0 + abs(r * cos) * sppx[men],
 							y1 = y0 + abs(r * sin) * sppy[men];
@@ -598,7 +607,8 @@ class CreateSession {
 						break;
 					}
 					case 'radial': {
-						let relativeWidth_half = width / 2,
+						let
+							relativeWidth_half = width / 2,
 							relativeHeight_half = height / 2,
 
 							ret_left = relative.left + relativeWidth_half + textAlign_fix,
@@ -610,7 +620,8 @@ class CreateSession {
 				}
 
 				for (let i in style.gradient) {
-					let pos = i / 100,
+					let
+						pos = i / 100,
 						color = style.gradient[i] || 'transparent';
 
 					if (isNaN(pos)) {
@@ -666,7 +677,8 @@ class CreateSession {
 		if (style.width == 'auto' || style.height == 'auto') {
 			switch (this.type) {
 				case 'image': {
-					let element = this.element,
+					let
+						element = this.element,
 						widthScale = element.width / element.height,
 						heightScale = element.height / element.width;
 
@@ -717,11 +729,11 @@ class CreateSession {
 			// focus 기능을 사용 중이라면
 			if (usingCamera.focus) {
 				let relativePerspectiveFromDistance = scaleDistance - relative.perspective;
-
 				// scaleDistance 보다 근접했을 경우
 				if (relativePerspectiveFromDistance > 0) {
 					// 상대적 거리에 따라 blur 처리
-					let maxiumBlur = 5,
+					let
+						maxiumBlur = 5,
 						relativeBlur = (scaleDistance - relative.perspective) / (scaleDistance / maxiumBlur) + style.blur;
 
 					relative.blur = relativeBlur;
@@ -843,7 +855,8 @@ class CreateSession {
 			case 'text': {
 				delete relative.width_tmp;
 
-				let fillColor = hasGradient ? getGradient(this) : style.color,
+				let
+					fillColor = hasGradient ? getGradient(this) : style.color,
 					left;
 
 				ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + relative.fontSize + 'px ' + style.fontFamily;
@@ -958,12 +971,13 @@ class CreateSession {
 	// 객체가 현재 위치를 직접 이동합니다
 	// 여러대의 객체가 선택되었을 시 가장 최초 객체를 선택
 	follow(_tarObj, _relativePosition = {}) {
-		let tarObj,
+		let
+			tarObj,
 			tarObj_followInit_follower;
-
 		const
 			work = (item) => {
-				let arr_follower = [],
+				let
+					arr_follower = [],
 					item_followInit = item.__system__.follow_init;
 				// 객체에 팔로잉 지정
 				item_followInit.following = tarObj;
@@ -982,7 +996,8 @@ class CreateSession {
 					// cssModified 이벤트를 걸어서 현재 객체의 팔로워의 위치 변화 (css)
 					tarObj.on('followed cssmodified animateupdate animateend followupdate', (e) => {
 						for (let j = 0, len_j = e.target.__system__.follow_init.follower.length; j < len_j; j++) {
-							let follower = e.target.__system__.follow_init.follower[j],
+							const
+								follower = e.target.__system__.follow_init.follower[j],
 								follower_style = follower.style,
 								obj_follower = follower.__system__.follow_init.relative;
 
@@ -1241,7 +1256,8 @@ class CreateSession {
 
 	// 객체에 이벤트를 등록합니다
 	on(e, fn) {
-		let arr_event = lve.root.const.arr_event,
+		const
+			arr_event = lve.root.const.arr_event,
 			attachCanvasEventList = (event, item) => {
 				const arr_eventObjlst = lve.root.cache.canvasEventKeyword[event];
 				// 캔버스 이벤트가 아닐 경우
@@ -1291,7 +1307,8 @@ class CreateSession {
 
 	// 객체에 이벤트 제거합니다
 	off(e) {
-		let arr_event = lve.root.const.arr_event,
+		const
+			arr_event = lve.root.const.arr_event,
 			removeAttachCanvasEventList = (event, item) => {
 				const arr_eventObjlst = lve.root.cache.canvasEventKeyword[event];
 				// 캔버스 이벤트가 아닐 경우
@@ -1320,7 +1337,6 @@ class CreateSession {
 				console.error(this);
 				return;
 			}
-
 			// 객체를 순회하며 이벤트 제거
 			if (this.context) {
 				for (let j = 0, len_j = this.context.length; j < len_j; j++) {
@@ -1372,22 +1388,24 @@ class CreateSession {
 
 	// 객체의 재생을 멈춤니다
 	pause() {
-		let _callback = (item) => {
-			if (!item.element.pause) {
-				console.error('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
-				console.error(item);
-				return;
-			}
-			item.element.pause();
-			item.emit('pause');
-		};
+		const
+			work = (item) => {
+				if (!item.element.pause) {
+					console.error('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
+					console.error(item);
+					return;
+				}
+				item.element.pause();
+				item.emit('pause');
+			};
+
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				_callback(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			_callback(this);
+			work(this);
 		}
 
 		return this;
@@ -1776,16 +1794,17 @@ class CreateSession {
 		}
 		// 속성 반환
 		else {
-			let ret = [],
+			const
+				rets = [],
 				work = (item) => {
 					const tarData = item.__system__.data[_data];
 					// 매개변수가 없을 때
 					// 선택된 모든 객체의 style 속성 반환
 					if (!_data) {
-						ret.push(item.__system__.data);
+						rets.push(item.__system__.data);
 					}
 					else if (typeof _data == 'string' && !!tarData) {
-						ret.push(tarData);
+						rets.push(tarData);
 					}
 				};
 
@@ -1798,7 +1817,7 @@ class CreateSession {
 				work(this);
 			}
 			// 결과 반환
-			return ret;
+			return rets;
 		}
 	}
 
@@ -1851,7 +1870,8 @@ class CreateSession {
 
 	// >= v2.0.3
 	from(_tarObj) {
-		let tarObj,
+		let
+			tarObj,
 			retObj = { name: this.name, context: [] };
 
 		if (_tarObj === undefined) {
@@ -2005,7 +2025,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		userExtendDrawStart = initSetting.userExtendDrawStart,
 		userExtendDrawEnd = initSetting.userExtendDrawEnd;
 
-	let isNeedSort = cache.isNeedSort,
+	let
+		isNeedSort = cache.isNeedSort,
 		isDrawFrame = fps < timestamp - cache.lastDraw;
 
 	// 현재 시각 갱신
@@ -2033,7 +2054,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	// 해당 씬의 모든 객체 순회
 	let i = objects.length;
 	while (i--) {
-		let item = objects[i], // 해당 객체
+		let
+			item = objects[i], // 해당 객체
 			item_timescale = item.timescale * delayscale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
 			item_ani_callbacks_len = item_ani_callbacks.length,
@@ -2063,7 +2085,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			else if (typeof item.__system__.ani_init[j] != 'number') {
 				continue;
 			}
-			let item_style = item.style,
+			let
+				item_style = item.style,
 				item_ani = item.__system__.ani_init,
 				item_ani_tar = item_ani[j],
 				item_ani_origin = item_ani.origin,
@@ -2202,7 +2225,8 @@ lve.root.fn.adjustJSON = (_data, _obj) => {
 	const data = lve.root.fn.copyObject(_data);
 	// 모든 스타일 parseFloat화 시키기
 	for (let i in data) {
-		let data_origin = _data[i],
+		let
+			data_origin = _data[i],
 			parseData = parseFloat(data_origin);
 
 		delete data[i];
@@ -2229,7 +2253,8 @@ lve.root.fn.getRelativeSize = (tarObj, tarObj_size) => {
 };
 
 lve.root.fn.getRelativePosition = (tarObj, direction) => {
-	let pt_center, // 캔버스의 중앙 - 캔버스 그리기 시작 위치
+	let
+		pt_center, // 캔버스의 중앙 - 캔버스 그리기 시작 위치
 		pt_fix, // 객체 자신을 그리기 중점 - pt_center - (width / 2) || (height / 2)
 		camera_height, // 카메라 높이
 		n,
@@ -2283,8 +2308,8 @@ lve.root.fn.eventfilter = (e) => {
 		canvasEventKeyword = cache.canvasEventKeyword,
 		ox = e.offsetX,
 		oy = e.offsetY;
-
-	let arr_targetlst = canvasEventKeyword[e.type].concat(),
+	let
+		arr_targetlst = canvasEventKeyword[e.type].concat(),
 		arr_targetlst_len = arr_targetlst.length;
 
 	cache.isNeedSort = 0;
@@ -2305,7 +2330,6 @@ lve.root.fn.eventfilter = (e) => {
 			relative = item.relative,
 			left = relative.left,
 			top = relative.bottom;
-
 		// 예외 처리
 		if (
 			item.type == 'camera' || // 카메라 객체일 경우
@@ -2417,7 +2441,8 @@ lve.root.fn.isRotateVisible = (_item) => {
 };
 
 lve.root.fn.setRotateObject = (_item) => {
-	let canvas = lve.root.vars.initSetting.canvas,
+	let
+		canvas = lve.root.vars.initSetting.canvas,
 		canvas_elem = canvas.element,
 
 		relative = _item.relative,
@@ -2620,14 +2645,13 @@ lve.fullScreen = (extend) => {
 		// 이벤트 함수
 		fn_eventExit = () => {
 			let isFullScreen = canvas_elem.getAttribute('data-fullscreen');
-
 			// 현재 전체화면 모드라면
 			if (isFullScreen) {
 				canvas_elem.removeAttribute('data-fullscreen');
 
-				if (extend)
+				if (extend) {
 					canvas_elem.style.transform = '';
-
+				}
 				canvas_elem.removeEventListener('fullscreenchange', fn_eventExit);
 				canvas_elem.removeEventListener('webkitfullscreenchange', fn_eventExit);
 				canvas_elem.removeEventListener('mozscreenchange', fn_eventExit);
@@ -2636,10 +2660,10 @@ lve.fullScreen = (extend) => {
 			// 진입 시
 			else {
 				canvas_elem.setAttribute('data-fullscreen', true);
-
 				// 확장을 허용했을 시
-				if (extend)
+				if (extend) {
 					canvas_elem.style.transform = 'scale(' + screenScale + ')';
+				}
 			}
 		};
 
@@ -2735,7 +2759,8 @@ lve.calc = (_data = {}) => {
 		}
 	}
 	// getRelativeSize와 사용자의 요청값을 비교하여 증감 비율 구하기
-	let compare_option = Object.keys(tmp_ret)[0],
+	let
+		compare_option = Object.keys(tmp_ret)[0],
 		fixScale = data[compare_option] / tmp_ret[compare_option];
 	// 좌표값이 아닌 속성값을 증감 비율에 따라 보정
 	for (let i in tmp_ret) {
