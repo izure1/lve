@@ -1397,7 +1397,7 @@ class CreateSession {
 	addClass(_className) {
 		const
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					className = isFn ? _className(item) : _className,
 					arr_newClassName = className.split(' ');
@@ -1422,11 +1422,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return this;
@@ -1436,7 +1436,7 @@ class CreateSession {
 	removeClass(_className) {
 		const
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					className = isFn ? _className(item) : _className,
 					arr_newClassName = className.split(' ');
@@ -1461,11 +1461,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return this;
@@ -1475,7 +1475,7 @@ class CreateSession {
 	toggleClass(_className) {
 		const
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					className = isFn ? _className(item) : _className,
 					arr_newClassName = className.split(' ');
@@ -1504,11 +1504,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return this;
@@ -1519,7 +1519,7 @@ class CreateSession {
 		let isExist = true;
 		const
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					item_className = item.className + '',
 					className = isFn ? _className(item) : _className,
@@ -1533,11 +1533,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i && isExist; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return isExist;
@@ -1551,7 +1551,7 @@ class CreateSession {
 				context: []
 			},
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					item_className = item.className + '',
 					className = isFn ? _className(item) : _className,
@@ -1565,11 +1565,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return lve(retArray);
@@ -1583,7 +1583,7 @@ class CreateSession {
 				context: []
 			},
 			isFn = typeof _className == 'function',
-			complete = (item) => {
+			work = (item) => {
 				const
 					item_className = item.className + '',
 					className = isFn ? _className(item) : _className,
@@ -1597,11 +1597,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return lve(retArray);
@@ -1611,7 +1611,7 @@ class CreateSession {
 	element() {
 		const
 			retArray = [],
-			complete = (item) => {
+			work = (item) => {
 				if (item.element.nodeName) {
 					retArray.push(item.element);
 				}
@@ -1619,11 +1619,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return retArray;
@@ -1633,7 +1633,7 @@ class CreateSession {
 	emit(e, detail = {}) {
 		const
 			arr_events = e.toLowerCase().split(' '),
-			complete = (item) => {
+			work = (item) => {
 				for (let j = 0, len_j = arr_events.length; j < len_j; j++) {
 					const
 						tarEvent = arr_events[j],
@@ -1652,18 +1652,18 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 	}
 
 	// 해당 객체의 문자열 길이를 재정의합니다
 	measureText() {
 		const
-			complete = (item) => {
+			work = (item) => {
 				if (item.type !== 'text') {
 					console.error('measureText 메서드는 type:text 객체에만 사용할 수 있습니다');
 					return;
@@ -1675,11 +1675,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return this;
@@ -1692,7 +1692,7 @@ class CreateSession {
 				name: this.name,
 				context: []
 			},
-			complete = (item) => {
+			work = (item) => {
 				const arr_itemFollower = item.__system__.follow_init.follower;
 				// 팔로워가 있을 경우
 				for (let j = 0, len_j = arr_itemFollower.length; j < len_j; j++) {
@@ -1706,11 +1706,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return lve(obj_ret);
@@ -1723,7 +1723,7 @@ class CreateSession {
 				name: this.name,
 				context: []
 			},
-			complete = (item) => {
+			work = (item) => {
 				const item_followingTar = item.__system__.follow_init.following;
 				if (!item_followingTar) {
 					return;
@@ -1735,11 +1735,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 
 		return lve(obj_ret);
@@ -1749,7 +1749,8 @@ class CreateSession {
 	data(_data) {
 		// 속성 적용
 		if (typeof _data == 'object') {
-			let complete = (item) => {
+			const
+				work = (item) => {
 					// 매개변수가 Object형일 경우
 					// 스타일 속성 대입
 					if (typeof _data == 'object') {
@@ -1763,11 +1764,11 @@ class CreateSession {
 
 			if (this.context) {
 				for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-					complete(this.context[i]);
+					work(this.context[i]);
 				}
 			}
 			else {
-				complete(this);
+				work(this);
 			}
 
 			// 객체 반환
@@ -1776,7 +1777,7 @@ class CreateSession {
 		// 속성 반환
 		else {
 			let ret = [],
-				complete = (item) => {
+				work = (item) => {
 					const tarData = item.__system__.data[_data];
 					// 매개변수가 없을 때
 					// 선택된 모든 객체의 style 속성 반환
@@ -1790,11 +1791,11 @@ class CreateSession {
 
 			if (this.context) {
 				for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-					complete(this.context[i]);
+					work(this.context[i]);
 				}
 			}
 			else {
-				complete(this);
+				work(this);
 			}
 			// 결과 반환
 			return ret;
@@ -1831,7 +1832,7 @@ class CreateSession {
 
 		const
 			src = typeof _src == 'function' ? _src(this) : _src,
-			complete = (_item) => {
+			work = (_item) => {
 				_item.src = src;
 				_item.style.width = 'not_ready';
 				_item.style.height = 'not_ready';
@@ -1840,11 +1841,11 @@ class CreateSession {
 
 		if (this.context) {
 			for (let i = 0, len = this.context.length; i < len; i++) {
-				complete(this.context[i]);
+				work(this.context[i]);
 			}
 		}
 		else {
-			complete(this);
+			work(this);
 		}
 	}
 
@@ -1898,6 +1899,36 @@ class CreateSession {
 		}
 		return lve(retObj);
 	}
+
+	// >= 2.2.0
+	in(_sceneName) {
+		const
+			rets = [],
+			work = (_item) => {
+				const
+					sceneName = typeof _sceneName == 'function' ? (_sceneName(_item) || '') : _sceneName,
+					sceneNames = sceneName.split(' ');
+
+				for (let i = 0, len = sceneNames.length; i < len; i++) {
+					if (sceneNames[i] === _item.scene) {
+						rets.push(_item);
+						break;
+					}
+				}
+			};
+
+		if (this.context) {
+			for (let i = 0, len = this.context.length; i < len; i++) {
+				work(this.context[i]);
+			}
+		}
+		else {
+			work(this);
+		}
+		// update session
+		this.context = rets;
+		return this;
+	}
 };
 
 /*  lve.root
@@ -1919,7 +1950,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 확장 메서드에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.1.3' // lve.js 버전을 뜻합니다
+	version: '2.2.0' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
@@ -2633,6 +2664,7 @@ lve.fullScreen = (extend) => {
 				try {
 					canvas_elem.msRequestFullScreen();
 				} catch (e) {
+					console.error('브라우저가 전체화면 기능을 지원하지 않습니다');
 					return;
 				}
 			}
