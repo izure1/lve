@@ -254,7 +254,13 @@
                 height: 49244 * km,
                 color: "lightblue",
                 perspective: 4497000000 * km + sunWidth
-            }).addClass("planet");
+				}).addClass("planet");
+
+			lve("*").findClass('planet').css({
+				perspective: function (self) {
+					return self.css('perspective')[0] / 1000
+				}
+			});
 
             rotate("수성", 88 * day);
             rotate("금성", 225 * day);
