@@ -103,7 +103,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.2.1' // lve.js 버전을 뜻합니다
+	version: '2.2.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
@@ -707,7 +707,7 @@ lve.root.const.ObjectSession = class {
 			this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
 			!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
 			this.type == 'text' && !this.text === undefined || // text타입이면서 text가 지정되지 않음
-			this.type == 'text' && style.fontSize === undefined || style.fontSize <= 0 || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
+			this.type == 'text' && style.fontSize <= 0 || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
 			relative.opacity <= 0 || // 투명도가 0일 경우
 			style.width <= 0 || // width 가 0일 경우
 			style.height <= 0 || // height 가 0일 경우
@@ -928,6 +928,8 @@ lve.root.const.ObjectSession = class {
 							break;
 						}
 					}
+				} else {
+					left = relative.left;
 				}
 				if (style.borderWidth) {
 					ctx.strokeStyle = style.borderColor;
@@ -1058,6 +1060,9 @@ lve.root.const.ObjectSession = class {
 		}
 		else {
 			tarObj = lve.root.cache.selectorKeyword[_tarObj];
+			if (!tarObj) {
+				return;
+			}
 			if (tarObj.length > 0) {
 				tarObj = tarObj[0];
 			}
@@ -1929,6 +1934,9 @@ lve.root.const.ObjectSession = class {
 		else {
 			tarObj = lve.root.cache.selectorKeyword[_tarObj];
 		}
+		if (!tarObj) {
+			return;
+		}
 
 		for (let i = 0, len = tarObj.length; i < len; i++) {
 			const
@@ -2024,7 +2032,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 
 	let
 		isNeedSort = cache.isNeedSort,
-		isDrawFrame = fps < timestamp - cache.lastDraw;
+		isDrawFrame = fps <= timestamp - cache.lastDraw;
 
 	// 현재 시각 갱신
 	cache.now += interval;
@@ -2034,7 +2042,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	}
 	// 설정 갱신
 	if (isDrawFrame) {
-		cache.lastDraw = performance.now();
+		cache.lastDraw = timestamp;
 		// 프레임 초기화
 		ctx.restore();
 		ctx.save();
