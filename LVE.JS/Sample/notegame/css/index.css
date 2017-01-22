@@ -1,0 +1,9 @@
+﻿canvas {
+	border:1px;
+	border-color:red;
+}
+
+#container {
+	width:800px;
+	margin:0 auto;
+}

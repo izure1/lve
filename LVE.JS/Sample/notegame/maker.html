@@ -1,0 +1,170 @@
+﻿<!DOCTYPE HTML>
+<html>
+	<head>
+		<style type="text/css">
+			#result {
+				width:800px;
+				height:480px;
+			}
+		</style>
+		<script type="text/javascript">
+            var nowMusic,
+                nowMusic_data = new Audio(),
+                nowMusic_firstNodeDelay = 0;
+
+
+			function download(filename, text) {
+				var pom = document.createElement('a');
+				pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+				pom.setAttribute('download', filename);
+
+				if (document.createEvent) {
+					var event = document.createEvent('MouseEvents');
+					event.initEvent('click', true, true);
+					pom.dispatchEvent(event);
+				}
+				else {
+					pom.click();
+				}
+			}
+
+			function Musics() {
+				this.code = [];
+				this.timestamp_start = new Date().getTime();
+			}
+
+			function newMusic() {
+			    var nowMusicURL = nowMusic_data.src;
+
+			    nowMusic_data = new Audio(nowMusicURL);
+
+			    nowMusic_data.addEventListener("canplay", function () {
+			        nowMusic = new Musics();
+			        nowMusic_firstNodeDelay = 0;
+			    });
+
+			    nowMusic_data.play();
+			}
+
+			function endMusic() {
+				var text_code = "window.arr_musicCode = window.arr_musicCode || {};\r\n\r\n",
+					text_tmpCode = "",
+					timestamp_firstNote = nowMusic.code[0].delay,
+					timestamp_fix = nowMusic_firstNodeDelay;
+
+				for (var i in nowMusic.code) {
+					var data_note = JSON.parse(JSON.stringify(nowMusic.code[i]));
+
+					text_tmpCode += "	function(){\r\n		createNote(" + JSON.stringify(data_note) + ");\r\n	},\r\n";
+				}
+
+				var musicName = prompt("노래 제목은?", "");
+
+				text_code += "\r\n\r\nwindow.arr_musicCode['" + musicName + "'] = [\r\n☆];";
+				text_code = text_code.replace("☆", text_tmpCode);
+
+				download(musicName + ".js", text_code);
+			}
+
+			function musicReady(self) {
+			    var fr = new FileReader(),
+			        fp = self.files[0];
+
+			    fr.onload = function () {
+			        alert('음악 파일 장전 완료!\n새로운 뮤직 시작 버튼을 누르면 시작됩니다');
+
+			        nowMusic_data.src = fr.result;
+			    };
+
+			    fr.readAsDataURL(fp);
+			}
+
+			window.onkeydown = function (e) {
+				var _res = "createNote(☆)",
+					_timestamp = new Date().getTime(),
+					_json = {};
+
+				if (
+					e.keyCode != 65 &&
+					e.keyCode != 83 &&
+					e.keyCode != 68 &&
+					e.keyCode != 70 &&
+					e.keyCode != 74 &&
+					e.keyCode != 75 &&
+					e.keyCode != 76 &&
+					e.keyCode != 186
+				)
+				    return !1;
+
+				if (nowMusic_firstNodeDelay === 0)
+				    nowMusic_firstNodeDelay = _timestamp - nowMusic.timestamp_start;
+
+				switch (e.keyCode) {
+					case 65: {
+						_json.order = 1;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 83: {
+						_json.order = 2;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 68: {
+						_json.order = 3;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 70: {
+						_json.order = 4;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 74: {
+						_json.order = 5;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 75: {
+						_json.order = 6;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 76: {
+						_json.order = 7;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+					case 186: {
+						_json.order = 8;
+						_json.delay = (_timestamp - nowMusic.timestamp_start);
+						break;
+					}
+				}
+
+				nowMusic.code.push(_json);
+			};
+		</script>
+	</head>
+	<body>
+        <div>
+            <p>
+                음악 파일 일발 장전 후
+            </p>
+            <form>
+                <input id="music_file" type="file" onchange="musicReady(this);">
+            </form>
+        </div>
+		<div>
+            <p>
+                파일이 준비됐으면 새로운 뮤직 시작을 누르세요
+            </p>
+			<button onclick="newMusic();">새로운 뮤직 시작</button>
+			<button onclick="endMusic();">작성 끝~</button>
+		</div>
+		<hr />
+		<div>
+			<textarea id="result" readonly="readonly"></textarea>
+		</div>
+	</body>
+</html>
