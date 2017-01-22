@@ -1,0 +1,9 @@
+{
+  "name": "lve.js",
+  "version": "0.0.0",
+  "description": "LVE.JS",
+  "main": "app.js",
+  "author": {
+    "name": "izure"
+  }
+}
