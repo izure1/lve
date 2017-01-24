@@ -298,6 +298,7 @@ lve.root.const.ObjectSession = class {
 			stylePropObj = {
 				text: { width: 'auto', height: 'auto', gradientType: 'linear' },
 				image: { width: 'not_ready', height: 'not_ready' },
+				sprite: { width: 'not_ready', height: 'not_ready' },
 				circle: { gradientType: 'radial' },
 				square: { gradientType: 'linear' }
 			},
@@ -396,7 +397,7 @@ lve.root.const.ObjectSession = class {
 		this.__system__ = {
 			ani_init: { callbacks: [] },
 			follow_init: { follower: [], following: undefined, relative: {} },
-			sprite_init: { playing: false },
+			sprite_init: { playing: false, stage: 1, fps: 1, current: 0, timestamp: performance.now() },
 			data: {},
 			events: {},
 			drawing: true,
@@ -762,6 +763,8 @@ lve.root.const.ObjectSession = class {
 			this.type == 'image' && this.src === undefined || // image타입이며 url이 지정되지 않음
 			this.type == 'image' && this.element.complete != true || // image타입이며, 아직 element가 로드되지 않았을 시
 			this.type == 'video' && this.src === undefined || // video타입이며 url이 지정되지 않음
+			this.type == 'sprite' && this.src === undefined || // sprite타입이며 url이 지정되지 않음
+			this.type == 'sprite' && this.element.complete != true || // sprite타입이며, 아직 element가 로드되지 않았을 시
 			this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
 			!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
 			this.type == 'text' && !this.text === undefined || // text타입이면서 text가 지정되지 않음
@@ -790,7 +793,7 @@ lve.root.const.ObjectSession = class {
 		if (style.width == 'auto' || style.height == 'auto') {
 			switch (this.type) {
 				case 'image': {
-					let
+					const
 						element = this.element,
 						widthScale = element.width / element.height,
 						heightScale = element.height / element.width;
@@ -798,6 +801,35 @@ lve.root.const.ObjectSession = class {
 					// 양쪽 변 모두 auto일 경우
 					if (style.width == 'auto' && style.height == 'auto') {
 						style.width = element.width || 1;
+						style.height = element.height || 1;
+						style.width_tmp = 'auto';
+						style.height_tmp = 'auto';
+					}
+					// 한쪽 변만 auto일 시 
+					else {
+						// 가로 사이즈가 auto일 시
+						if (style.width == 'auto') {
+							style.width = style.height * widthScale;
+							style.width_tmp = 'auto';
+						}
+						// 세로 사이즈가 auto일 시
+						else {
+							style.height = style.width * heightScale;
+							style.height_tmp = 'auto';
+						}
+					}
+
+					break;
+				}
+				case 'sprite': {
+					const
+						element = this.element,
+						widthScale = element.width / this.__system__.sprite_init.stage / element.height,
+						heightScale = element.height / element.width;
+
+					// 양쪽 변 모두 auto일 경우
+					if (style.width == 'auto' && style.height == 'auto') {
+						style.width = element.width / this.__system__.sprite_init.stage || 1;
 						style.height = element.height || 1;
 						style.width_tmp = 'auto';
 						style.height_tmp = 'auto';
@@ -889,10 +921,7 @@ lve.root.const.ObjectSession = class {
 		switch (this.type) {
 			case 'image': {
 				const imageObj = this.element;
-				// 아직 그림 데이터가 로드되지 않았다면 그리지 않기
-				if (imageObj === {}) {
-					return;
-				}
+
 				if (style.shadowColor) {
 					ctx.shadowColor = style.shadowColor;
 					ctx.shadowBlur = relative.shadowBlur;
@@ -1018,6 +1047,32 @@ lve.root.const.ObjectSession = class {
 				try {
 					ctx.fill();
 					ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
+				} catch (e) { };
+				break;
+			}
+			case 'sprite': {
+				const
+					imageObj = this.element,
+					current = this.__system__.sprite_init.current,
+					gap = imageObj.width / this.__system__.sprite_init.stage;
+
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
+				}
+				if (style.borderWidth) {
+					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
+				}
+				ctx.beginPath();
+
+				try {
+					ctx.fill();
+					ctx.drawImage(imageObj, current * gap, 0, gap, imageObj.height, relative.left, relative.bottom, relative.width, relative.height);
 				} catch (e) { };
 				break;
 			}
@@ -1480,8 +1535,7 @@ lve.root.const.ObjectSession = class {
 						break;
 					}
 					case 'sprite': {
-						item.element.dataset.playing = 'true';
-						// TODO: 스프라이트 재생
+						item.__system__.sprite_init.playing = true;
 						break;
 					}
 					default: {
@@ -1515,7 +1569,7 @@ lve.root.const.ObjectSession = class {
 						break;
 					}
 					case 'sprite': {
-						// TODO: 스프라이트 정지 기능 넣어야함
+						item.__system__.sprite_init.playing = false;
 						item.emit('pause');
 						break;
 					}
@@ -2080,6 +2134,65 @@ lve.root.const.ObjectSession = class {
 		this.context = rets;
 		return this;
 	}
+
+	// >= 2.4.0
+	sprite(_data) {
+		const
+			retArr = [],
+			work = (_item) => {
+				const sprite_init = _item.__system__.sprite_init;
+				let data;
+
+				switch (typeof _data) {
+					case 'object': {
+						data = lve.root.fn.adjustJSON(_data, sprite_init, _item)
+						break;
+					}
+					case 'function': {
+						data = _data(_item);
+						break;
+					}
+					case 'string': {
+						data = _data;
+						break;
+					}
+				}
+
+				switch (typeof data) {
+					case 'object': {
+						for (let i in data) {
+							sprite_init[i] = data[i];
+						}
+						break;
+					}
+					case 'string': {
+						retArr.push(_item.__system__.sprite_init[data]);
+						break;
+					}
+				}
+			};
+
+		if (this.context) {
+			for (let i = 0, len = this.context.length; i < len; i++) {
+				work(this.context[i]);
+			}
+		}
+		else {
+			work(this);
+		}
+
+		switch (typeof _data) {
+			case 'object': {
+				return this;
+			}
+			case 'function': {
+				// skip
+			}
+			case 'string': {
+				return retArr;
+			}
+		}
+	}
 };
 
 
@@ -2128,7 +2241,12 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 
 		for (let i = 0, len_i = objects.length; i < len_i; i++) {
 			const item = objects[i];
-			if (item.scene === cameraScene || item.scene === 'anywhere' || item.__system__.ani_init.count_length < 1) {
+			if (
+				item.scene === cameraScene ||
+				item.scene === 'anywhere' ||
+				item.__system__.ani_init.count_length < 1 ||
+				item.type == 'sprite' && item.__system__.sprite_init.playing === true
+			) {
 				cache.objectArr.push(item);
 			}
 		}
@@ -2168,9 +2286,34 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			item_ani_countMax = item.__system__.ani_init.count_max,
 			attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 			attr_length = item.__system__.ani_init.count_length;
+
 		// 사물 그려넣기
 		if (isDrawFrame) {
 			item.draw();
+		}
+		// 스프라이트 이미지
+		if (item.type == 'sprite') {
+			const
+				sprite_init = item.__system__.sprite_init,
+				sprite_interval = 1000 / sprite_init.fps;
+
+			if (sprite_init.playing && sprite_interval < timestamp - sprite_init.timestamp) {
+				sprite_init.timestamp = timestamp;
+				sprite_init.current++;
+			}
+			// sprite onended
+			if (sprite_init.current >= sprite_init.stage) {
+				item.emit('ended');
+				// if sprite object has not loop
+				if (!item.loop) {
+					sprite_init.playing = false;
+					sprite_init.current--;
+				}
+				else {
+					sprite_init.current = 0;
+					item.play();
+				}
+			}
 		}
 		// 해당 객체가 animating이 아닐 시 제외
 		if (!item_ani_countMax && item_ani_callbacks_len === 0) {
@@ -2637,41 +2780,63 @@ lve.root.fn.initElement = (that, _onload) => {
 		}
 	}
 	// attach events
-	that.element.onloadeddata = (e) => {
-		switch (that.type) {
-			case 'image': {
+	switch (that.type) {
+		case 'image': {
+			that.element.onload = () => {
 				if (that.style.width === 'not_ready') {
 					that.style.width = that.element.width || 10;
 				}
 				if (that.style.height === 'not_ready') {
 					that.style.height = that.element.height || 10;
 				}
-				break;
-			}
-			case 'video': {
-				that.element.oncanplay = (e) => {
-					if (that.element.dataset.playing === 'true') {
-						delete that.element.dataset.playing;
-						that.emit('play');
-					}
-					that.element.onplay = () => {
-						that.emit('play');
-					}
-				};
-				that.element.onended = () => {
-					that.emit('ended');
-					if (that.loop) {
-						that.element.currentTime = 0;
-						that.play();
-					}
-				};
-			}
+				if (typeof _onload == 'function') {
+					that.emit('load');
+					_onload(that);
+				}
+			};
+			break;
 		}
-		if (typeof _onload == 'function') {
-			that.emit('load');
-			_onload(that);
+		case 'sprite': {
+			that.element.onload = () => {
+				if (that.style.width === 'not_ready') {
+					that.style.width = that.element.width / that.__system__.sprite_init.stage;
+				}
+				if (that.style.height === 'not_ready') {
+					that.style.height = that.element.height;
+				}
+				if (typeof _onload == 'function') {
+					that.emit('load');
+					_onload(that);
+				}
+			};
+			break;
 		}
-	};
+		case 'video': {
+			that.element.oncanplay = () => {
+				if (that.element.dataset.playing === 'true') {
+					delete that.element.dataset.playing;
+					that.emit('play');
+				}
+				that.element.onplay = () => {
+					that.emit('play');
+				}
+			};
+			that.element.onended = () => {
+				that.emit('ended');
+				if (that.loop) {
+					that.element.currentTime = 0;
+					that.play();
+				}
+			};
+			that.element.onloadeddata = () => {
+				if (typeof _onload == 'function') {
+					that.emit('load');
+					_onload(that);
+				}
+			};
+			break;
+		}
+	}
 	// load element from source
 	if (that.src) {
 		that.element.src = that.src;
