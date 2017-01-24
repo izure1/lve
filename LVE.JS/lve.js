@@ -103,7 +103,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.3.2' // lve.js 버전을 뜻합니다
+	version: '2.4.0' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -132,8 +132,8 @@ lve.root.cache = {
 };
 lve.root.const = {
 	radian: Math.PI / 180,
-	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video'], // 사용할 수 있는 객체 속성들입니다
-	arr_event: ['animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'custom', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load'], // 사용할 수 객체 이벤트입니다
+	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
+	arr_event: ['animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'custom', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat'], // 사용할 수 객체 이벤트입니다
 };
 lve.root.fn = {};
 
@@ -168,86 +168,110 @@ lve.root.const.ObjectSession = class {
 			easing = ani.easing[_attr] || 'linear';
 
 		switch (easing) {
-			case 'linear':
+			case 'linear': {
 				return c * t / d + b;
-			case 'easeInQuad':
+			}
+			case 'easeInQuad': {
 				t /= d;
 				return c * t * t + b;
-			case 'easeOutQuad':
+			}
+			case 'easeOutQuad': {
 				t /= d;
 				return -c * t * (t - 2) + b;
-			case 'easeInOutQuad':
+			}
+			case 'easeInOutQuad': {
 				t /= d / 2;
 				if (t < 1) return c / 2 * t * t + b;
 				t--;
 				return -c / 2 * (t * (t - 2) - 1) + b;
-			case 'easeInCubic':
+			}
+			case 'easeInCubic': {
 				t /= d;
 				return c * t * t * t + b;
-			case 'easeOutCubic':
+			}
+			case 'easeOutCubic': {
 				t /= d;
 				t--;
 				return c * (t * t * t + 1) + b;
-			case 'easeInOutCubic':
+			}
+			case 'easeInOutCubic': {
 				t /= d / 2;
 				if (t < 1) return c / 2 * t * t * t + b;
 				t -= 2;
 				return c / 2 * (t * t * t + 2) + b;
-			case 'easeInSine':
+			}
+			case 'easeInSine': {
 				return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
-			case 'easeOutSine':
+			}
+			case 'easeOutSine': {
 				return c * Math.sin(t / d * (Math.PI / 2)) + b;
-			case 'easeInQuart':
+			}
+			case 'easeInQuart': {
 				t /= d;
 				return c * t * t * t * t + b;
-			case 'easeOutQuart':
+			}
+			case 'easeOutQuart': {
 				t /= d;
 				t--;
 				return -c * (t * t * t * t - 1) + b;
-			case 'easeInOutQuart':
+			}
+			case 'easeInOutQuart': {
 				t /= d / 2;
 				if (t < 1) return c / 2 * t * t * t * t + b;
 				t -= 2;
 				return -c / 2 * (t * t * t * t - 2) + b;
-			case 'easeInQuint':
+			}
+			case 'easeInQuint': {
 				t /= d;
 				return c * t * t * t * t * t + b;
-			case 'easeOutQuint':
+			}
+			case 'easeOutQuint': {
 				t /= d;
 				t--;
 				return c * (t * t * t * t * t + 1) + b;
-			case 'easeInOutQuint':
+			}
+			case 'easeInOutQuint': {
 				t /= d / 2;
 				if (t < 1) return c / 2 * t * t * t * t * t + b;
 				t -= 2;
 				return c / 2 * (t * t * t * t * t + 2) + b;
-			case 'easeInSine':
+			}
+			case 'easeInSine': {
 				return -c * Math.cos(t / d * (Math.PI / 2)) + c + b;
-			case 'easeOutSine':
+			}
+			case 'easeOutSine': {
 				return c * Math.sin(t / d * (Math.PI / 2)) + b;
-			case 'easeInOutSine':
+			}
+			case 'easeInOutSine': {
 				return -c / 2 * (Math.cos(Math.PI * t / d) - 1) + b;
-			case 'easeInExpo':
+			}
+			case 'easeInExpo': {
 				return c * Math.pow(2, 10 * (t / d - 1)) + b;
-			case 'easeOutExpo':
+			}
+			case 'easeOutExpo': {
 				return c * (-Math.pow(2, -10 * t / d) + 1) + b;
-			case 'easeInOutExpo':
+			}
+			case 'easeInOutExpo': {
 				t /= d / 2;
 				if (t < 1) return c / 2 * Math.pow(2, 10 * (t - 1)) + b;
 				t--;
 				return c / 2 * (-Math.pow(2, -10 * t) + 2) + b;
-			case 'easeInCirc':
+			}
+			case 'easeInCirc': {
 				t /= d;
 				return -c * (Math.sqrt(1 - t * t) - 1) + b;
-			case 'easeOutCirc':
+			}
+			case 'easeOutCirc': {
 				t /= d;
 				t--;
 				return c * Math.sqrt(1 - t * t) + b;
-			case 'easeInOutCirc':
+			}
+			case 'easeInOutCirc': {
 				t /= d / 2;
 				if (t < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
 				t -= 2;
 				return c / 2 * (Math.sqrt(1 - t * t) + 1) + b;
+			}
 		}
 	}
 
@@ -262,50 +286,80 @@ lve.root.const.ObjectSession = class {
 			console.error(`type 속성은 객체 필수 속성입니다. 다음 중 한 가지를 필수로 선택해주세요. (${consts.arr_type.join(', ')})`);
 			return;
 		}
-		else if (consts.arr_type.indexOf(_data.type.toLowerCase()) == -1) {
+		else if (
+			consts.arr_type.indexOf(_data.type.toLowerCase()) == -1
+		) {
 			console.error(`${_data.type} 은(는) 존재하지 않는 type 속성입니다. 이용할 수 있는 type 속성은 다음과 같습니다. (${consts.arr_type.join(', ')})`);
 			return;
 		}
 
 		const
-			data = fn.adjustJSON(_data, this, this),
-			obj_props = {
+			data = lve.root.fn.adjustJSON(_data, this, this),
+			stylePropObj = {
 				text: { width: 'auto', height: 'auto', gradientType: 'linear' },
 				image: { width: 'not_ready', height: 'not_ready' },
 				circle: { gradientType: 'radial' },
 				square: { gradientType: 'linear' }
+			},
+			attrPropObj = {
+				video: { loop: false },
+				sprite: { loop: true }
 			};
 
-		const
-			initStyleProperty = () => {
-				for (let i in obj_props) {
-					if (this.type !== i) {
+		const initor = {};
+		initor.initAttribute = () => {
+			for (let i in attrPropObj) {
+				if (this.type !== i) {
+					continue;
+				}
+				for (let j in attrPropObj[i]) {
+					if (this[j] !== undefined) {
 						continue;
 					}
-					for (let j in obj_props[i]) {
-						this.style[j] = obj_props[i][j];
-					}
+					this[j] = attrPropObj[i][j];
 				}
-			},
-			initEventRooms = () => {
-				for (let i = 0, len = consts.arr_event.length; i < len; i++) {
-					this.__system__.events[consts.arr_event[i]] = [];
+			}
+		};
+		initor.initStyle = () => {
+			for (let i in stylePropObj) {
+				if (this.type !== i) {
+					continue;
 				}
-			},
-			insertNameKeyword = () => {
-				if (cache.selectorKeyword[this.name] === undefined) {
-					cache.selectorKeyword[this.name] = [];
+				for (let j in stylePropObj[i]) {
+					this.style[j] = stylePropObj[i][j];
 				}
-				cache.selectorKeyword[this.name].push(this);
-				cache.selectorKeyword[`[PRIMARY=${this.primary}]`] = [this];
-				cache.selectorKeyword[`[primary=${this.primary}]`] = [this];
-			};
+			}
+		};
+		initor.initEvent = () => {
+			for (let i = 0, len = consts.arr_event.length; i < len; i++) {
+				this.__system__.events[consts.arr_event[i]] = [];
+			}
+		};
+		initor.initElement = () => {
+			fn.initElement(this);
+		};
+		initor.initTextWidth = () => {
+			if (this.type === 'text' && this.style.width === 'auto') {
+				setTimeout(() => {
+					fn.getTextWidth(this);
+				}, 1);
+			}
+		};
+		initor.insertKeyword = () => {
+			if (cache.selectorKeyword[this.name] === undefined) {
+				cache.selectorKeyword[this.name] = [];
+			}
+			cache.selectorKeyword[this.name].push(this);
+			cache.selectorKeyword[`[PRIMARY=${this.primary}]`] = [this];
+			cache.selectorKeyword[`[primary=${this.primary}]`] = [this];
+		};
 
 		this.primary = cache.primary++;
 		this.type = data.type.toLowerCase();
 		this.scene = data.scene || 'main';
 		this.src = data.src;
 		this.text = data.text;
+		this.loop = data.loop;
 		this.timescale = data.timescale !== undefined ? data.timescale : 1;
 		this.className = data.className !== undefined ? data.className : "";
 		this.style = {
@@ -341,26 +395,24 @@ lve.root.const.ObjectSession = class {
 		this.element = {};
 		this.__system__ = {
 			ani_init: { callbacks: [] },
-			data: {},
-			drawing: true,
-			events: {},
 			follow_init: { follower: [], following: undefined, relative: {} },
+			sprite_init: { playing: false },
+			data: {},
+			events: {},
+			drawing: true,
 			hasGradient: false,
 			textWidth: 'auto',
 		};
 
 		vars.objects.push(this);
 
-		initStyleProperty();
-		initEventRooms();
-		lve.root.fn.initElement(this);
-		insertNameKeyword();
+		initor.initAttribute();
+		initor.initStyle();
+		initor.initEvent();
+		initor.initElement();
+		initor.initTextWidth();
+		initor.insertKeyword();
 
-		if (this.type === 'text' && this.style.width === 'auto') {
-			setTimeout(() => {
-				lve.root.fn.getTextWidth(this);
-			}, 1);
-		}
 		cache.isNeedSort++;
 		cache.isNeedCaching++;
 
@@ -1420,13 +1472,24 @@ lve.root.const.ObjectSession = class {
 					console.error(item);
 					return;
 				}
-				else if (!item.element.play) {
-					console.error('재생할 수 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
-					console.error(item);
-					return;
+
+				switch (item.type) {
+					case 'video': {
+						item.element.dataset.playing = 'true';
+						item.element.play();
+						break;
+					}
+					case 'sprite': {
+						item.element.dataset.playing = 'true';
+						// TODO: 스프라이트 재생
+						break;
+					}
+					default: {
+						console.error('재생할 수 없는 객체입니다. 이 메서드는 type 속성이 sprite/video 같은 재생/정지가 가능한 객체에 이용하십시오.');
+						console.error(item);
+						return;
+					}
 				}
-				item.element.setAttribute('data-play', true);
-				item.element.play();
 			};
 
 		if (this.context) {
@@ -1445,13 +1508,23 @@ lve.root.const.ObjectSession = class {
 	pause() {
 		const
 			work = (item) => {
-				if (!item.element.pause) {
-					console.error('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
-					console.error(item);
-					return;
+				switch (item.type) {
+					case 'video': {
+						item.element.pause();
+						item.emit('pause');
+						break;
+					}
+					case 'sprite': {
+						// TODO: 스프라이트 정지 기능 넣어야함
+						item.emit('pause');
+						break;
+					}
+					default: {
+						console.error('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
+						console.error(item);
+						return;
+					}
 				}
-				item.element.pause();
-				item.emit('pause');
 			};
 
 		if (this.context) {
@@ -2546,40 +2619,60 @@ lve.root.fn.canvasReset = (_item = { style: {}, relative: {} }) => {
 };
 
 lve.root.fn.initElement = (that, _onload) => {
-	const tagname = that.type === 'image' ? 'img' : 'video';
-	if (that.type !== 'image' && that.type !== 'video') {
-		that.element = {};
-		return;
-	}
-	that.element = document.createElement(tagname);
-	that.element.onload = (e) => {
-		if (that.type === 'image') {
-			if (that.style.width === 'not_ready') {
-				that.style.width = that.element.width || 10;
-			}
-			if (that.style.height === 'not_ready') {
-				that.style.height = that.element.height || 10;
-			}
+	switch (that.type) {
+		case 'image': {
+			// skip
 		}
-		else if (that.type === 'video') {
-			that.element.oncanplay = (e) => {
-				if (that.element.getAttribute('data-play')) {
-					that.element.removeAttribute('data-play');
-					that.emit('play');
+		case 'sprite': {
+			that.element = document.createElement('img');
+			break;
+		}
+		case 'video': {
+			that.element = document.createElement('video');
+			break;
+		}
+		default: {
+			that.element = {};
+			return;
+		}
+	}
+	// attach events
+	that.element.onloadeddata = (e) => {
+		switch (that.type) {
+			case 'image': {
+				if (that.style.width === 'not_ready') {
+					that.style.width = that.element.width || 10;
 				}
-				element.onplay = () => {
-					that.emit('play');
+				if (that.style.height === 'not_ready') {
+					that.style.height = that.element.height || 10;
 				}
-			};
-			that.element.onended = () => {
-				that.emit('ended');
-			};
+				break;
+			}
+			case 'video': {
+				that.element.oncanplay = (e) => {
+					if (that.element.dataset.playing === 'true') {
+						delete that.element.dataset.playing;
+						that.emit('play');
+					}
+					that.element.onplay = () => {
+						that.emit('play');
+					}
+				};
+				that.element.onended = () => {
+					that.emit('ended');
+					if (that.loop) {
+						that.element.currentTime = 0;
+						that.play();
+					}
+				};
+			}
 		}
 		if (typeof _onload == 'function') {
 			that.emit('load');
 			_onload(that);
 		}
 	};
+	// load element from source
 	if (that.src) {
 		that.element.src = that.src;
 	}
@@ -2652,16 +2745,27 @@ lve.pause = () => {
 		for (let i = 0, len_i = lve.root.vars.objects.length; i < len_i; i++) {
 			const
 				item = lve.root.vars.objects[i],
-				item_elem = item.element;
-			// 재생이 가능한 객체일 경우
-			if (typeof item_elem.play != 'function') {
+				playlistArr = ['video', 'sprite'];
+
+			if (playlistArr.indexOf(item.type) == -1) {
 				continue;
 			}
-			// 객체가 재생 중이었을 경우
-			else if (!item_elem.paused && !item_elem.ended) {
-				// 객체 일시중지
-				item_elem.pause();
-				item_elem.setAttribute('data-played', true);
+			switch (item.type) {
+				case 'video': {
+					// 객체가 재생 중이었을 경우
+					if (!item.element.paused && !item.element.ended) {
+						item.element.pause();
+						item.element.dataset.played = 'true';
+					}
+					break;
+				}
+				case 'sprite': {
+					if (item.__system__.sprite_init.playing) {
+						item.__system__.sprite_init.playing = false;
+						item.element.dataset.played = 'true';
+					}
+					break;
+				}
 			}
 		}
 	}
@@ -2676,16 +2780,26 @@ lve.play = () => {
 		for (let i = 0, len_i = lve.root.vars.objects.length; i < len_i; i++) {
 			const
 				item = lve.root.vars.objects[i],
-				item_elem = item.element;
-			// 재생이 가능한 객체일 경우
-			if (typeof item_elem.play != 'function') {
+				playlistArr = ['video', 'sprite'];
+
+			if (playlistArr.indexOf(item.type) == -1) {
 				continue;
 			}
-			// 재생 중이던 객체였는가
-			if (item_elem.getAttribute('data-played')) {
-				// 일시중지 중이던 객체 재생
-				item_elem.play();
-				item_elem.removeAttribute('data-played');
+			else if (item.element.dataset.played !== 'true') {
+				continue;
+			}
+			// 재생 중이던 객체였다면 재생
+			switch (item.type) {
+				case 'video': {
+					item.element.play();
+					delete item.element.dataset.played;
+					break;
+				}
+				case 'sprite': {
+					item.__system__.sprite_init.playing = 'true';
+					delete item.element.dataset.played;
+					break;
+				}
 			}
 		}
 	}

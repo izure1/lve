@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Video sample</title>
+		<meta charset="UTF-8" />
+		<script type="text/javascript" src="../../lve.js"></script>
+		<script type="text/javascript">
+			function initLve() {
+				lve.init({
+					canvas: document.querySelector('canvas')
+				});
+
+				lve('camera').create({
+					type: 'camera'
+				}).use();
+			}
+
+			function setVideo() {
+				lve('video').create({
+					type: 'video',
+					src: 'sample.mp4',
+					loop: true
+				}).css({
+					width: 400,
+					height: 250
+				}).play();
+			}
+
+			window.onload = () => {
+				initLve();
+				setVideo();
+			};
+		</script>
+	</head>
+	<body>
+		<canvas width="800" height="480"></canvas>
+		<div>
+			<button onclick="lve.pause();">world pause</button>
+			<button onclick="lve.play();">world play</button>
+		</div>
+	</body>
+</html>
