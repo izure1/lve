@@ -32,7 +32,7 @@ const
 			fn = root.fn,
 			usingCamera = vars.usingCamera;
 
-		let retArray = [];
+		let retArr = [];
 		// 문자열로 검색할 때
 		// ex.
 		// lve('[USING_CAMERA]')
@@ -40,27 +40,27 @@ const
 			// 특수선택자 처리
 			switch (_name) {
 				case '*': {
-					retArray = vars.objects;
+					retArr = vars.objects;
 					break;
 				}
 				case '[USING_SCENE]': {
-					retArray = fn.getSceneObj(usingCamera.scene);
+					retArr = fn.getSceneObj(usingCamera.scene);
 					break;
 				}
 				case '[using_scene]': {
-					retArray = fn.getSceneObj(usingCamera.scene);
+					retArr = fn.getSceneObj(usingCamera.scene);
 					break;
 				}
 				case '[USING_CAMERA]': {
-					retArray = [usingCamera];
+					retArr = [usingCamera];
 					break;
 				}
 				case '[using_camera]': {
-					retArray = [usingCamera];
+					retArr = [usingCamera];
 					break;
 				}
 				default: {
-					retArray = cache.selectorKeyword[_name];
+					retArr = cache.selectorKeyword[_name];
 					break;
 				}
 			}
@@ -71,16 +71,16 @@ const
 		else {
 			// session으로 검색했을 때
 			if (_name.context) {
-				retArray = _name.context;
+				retArr = _name.context;
 				_name = _name.name;
 			}
 			// 객체로 검색했을 때
 			else {
-				retArray = [_name];
+				retArr = [_name];
 				_name = _name.name;
 			}
 		}
-		return new lve.root.const.ObjectSession(_name, retArray);
+		return new lve.root.const.ObjectSession(_name, retArr);
 	};
 
 
@@ -103,10 +103,11 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.3.0' // lve.js 버전을 뜻합니다
+	version: '2.3.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
-	// 각 이벤트 룸 배열이 생성된 구조체. 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
+	// 각 이벤트 룸 배열이 생성된 구조체.
+	// 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다
 	canvasEventKeyword: {
 		mousedown: [],
 		mouseup: [],
@@ -119,8 +120,10 @@ lve.root.cache = {
 		dblclick: []
 	},
 	selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됩니다
+	objectArr: [], // 캐싱된 객체들이 이곳에 저장되어, lve.root.fn.update 메서드 호출시 순회합니다
 	mouseoverItem: false, // 현재 mouseover 되어있는 객체가 저장됩니다
 	isNeedSort: 0,
+	isNeedCaching: 0,
 	loseTime: 0,
 	lastDraw: 0,
 	now: 0,
@@ -359,6 +362,7 @@ lve.root.const.ObjectSession = class {
 			}, 1);
 		}
 		cache.isNeedSort++;
+		cache.isNeedCaching++;
 
 		delete this.context;
 		return this;
@@ -394,6 +398,7 @@ lve.root.const.ObjectSession = class {
 								case 'scene': {
 									if (lve.root.fn.checkCamera() === false) {
 										item[j] = value;
+										lve.root.cache.isNeedCaching++;
 										break;
 									}
 
@@ -703,6 +708,7 @@ lve.root.const.ObjectSession = class {
 			relative.perspective <= 0 || // 카메라보다 뒤에 있을 시
 			this.type == 'camera' || // camera타입
 			this.type == 'image' && this.src === undefined || // image타입이며 url이 지정되지 않음
+			this.type == 'image' && this.element.complete != true || // image타입이며, 아직 element가 로드되지 않았을 시
 			this.type == 'video' && this.src === undefined || // video타입이며 url이 지정되지 않음
 			this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
 			!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
@@ -739,8 +745,8 @@ lve.root.const.ObjectSession = class {
 
 					// 양쪽 변 모두 auto일 경우
 					if (style.width == 'auto' && style.height == 'auto') {
-						style.width = element.width;
-						style.height = element.height;
+						style.width = element.width || 1;
+						style.height = element.height || 1;
 						style.width_tmp = 'auto';
 						style.height_tmp = 'auto';
 					}
@@ -1009,6 +1015,7 @@ lve.root.const.ObjectSession = class {
 		vars.usingCamera = tarCamera;
 		// 객체 정렬
 		cache.isNeedSort++;
+		cache.isNeedCaching++;
 
 		return vars.usingCamera;
 	}
@@ -1213,6 +1220,7 @@ lve.root.const.ObjectSession = class {
 			work(this);
 		}
 
+		lve.root.cache.isNeedCaching++;
 		return this;
 	}
 
@@ -1233,6 +1241,7 @@ lve.root.const.ObjectSession = class {
 			work(this);
 		}
 
+		lve.root.cache.isNeedCaching++;
 		return this;
 	}
 
@@ -2032,7 +2041,26 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 
 	let
 		isNeedSort = cache.isNeedSort,
+		isNeedCaching = cache.isNeedCaching,
 		isDrawFrame = fps <= timestamp - cache.lastDraw;
+
+	// 만일 캐싱 요청이 있을 경우 전 오브젝트 순회하며 캐싱할 것
+	if (isNeedCaching) {
+		let cameraScene;
+		try {
+			cameraScene = usingCamera.scene;
+		} catch (e) { };
+
+		cache.objectArr = [];
+
+		for (let i = 0, len_i = objects.length; i < len_i; i++) {
+			const item = objects[i];
+			if (item.scene === cameraScene || item.scene === 'anywhere' || item.__system__.ani_init.count_length < 1) {
+				cache.objectArr.push(item);
+			}
+		}
+		isNeedCaching = 0;
+	}
 
 	// 현재 시각 갱신
 	cache.now += interval;
@@ -2057,10 +2085,10 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		}
 	}
 	// 해당 씬의 모든 객체 순회
-	let i = objects.length;
+	let i = cache.objectArr.length;
 	while (i--) {
 		let
-			item = objects[i], // 해당 객체
+			item = cache.objectArr[i], // 해당 객체
 			item_timescale = item.timescale * delayscale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
 			item_ani_callbacks_len = item_ani_callbacks.length,
@@ -2068,11 +2096,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 			attr_length = item.__system__.ani_init.count_length;
 		// 사물 그려넣기
-		if (
-			isDrawFrame &&
-			item.scene == usingCamera.scene ||
-			item.scene == 'anywhere'
-		) {
+		if (isDrawFrame) {
 			item.draw();
 		}
 		// 해당 객체가 animating이 아닐 시 제외
@@ -2113,8 +2137,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 				item_ani_tar != item_ani_origin[j] &&
 				item_ani_count[j] < item_ani_countMax_item
 			) {
-				// 움직인 것이 카메라일 경우는 예외
-				isNeedSort += (item.type != 'camera') - 0;
+				// 움직인 것이 카메라가 아니거나, timescale이 0일 때는 인덱싱하지 않음
+				isNeedSort += (item.type != 'camera' || item.timescale !== 0) - 0;
 			}
 			// 객체의 해당 속성이 animated 되었을 때
 			if (item_ani_count[j] >= item_ani_countMax_item) {
@@ -2130,6 +2154,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 				const callbacks = item_ani.callbacks.concat();
 				item.__system__.ani_init = { callbacks: callbacks };
 				item.emit('animateend');
+				cache.isNeedCaching++;
 			}
 		}
 		// 애니메이션 콜백 함수 체크
@@ -2550,7 +2575,7 @@ lve.root.fn.initElement = (that, _onload) => {
 				that.emit('ended');
 			};
 		}
-		if (_onload) {
+		if (typeof _onload == 'function') {
 			that.emit('load');
 			_onload(that);
 		}
