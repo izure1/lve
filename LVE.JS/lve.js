@@ -103,7 +103,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.4.0' // lve.js 버전을 뜻합니다
+	version: '2.4.1' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -165,6 +165,7 @@ lve.root.const.ObjectSession = class {
 			b = tar,
 			c = tar_goal - tar,
 			d = ani.duration[_attr] || 1,
+			a = 0, p = 0, s = 0,
 			easing = ani.easing[_attr] || 'linear';
 
 		switch (easing) {
@@ -271,6 +272,74 @@ lve.root.const.ObjectSession = class {
 				if (t < 1) return -c / 2 * (Math.sqrt(1 - t * t) - 1) + b;
 				t -= 2;
 				return c / 2 * (Math.sqrt(1 - t * t) + 1) + b;
+			}
+			case 'easeInElastic': {
+				if (t == 0) return b;
+				if ((t /= d) == 1) return b + c;
+				if (!p) p = d * .3;
+				if (!a || a < Math.abs(c)) { a = c; s = p / 4; }
+				else s = p / (2 * Math.PI) * Math.asin(c / a);
+				return -(a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+			}
+			case 'easeOutElastic': {
+				if (t == 0) return b;
+				if ((t /= d) == 1) return b + c;
+				if (!p) p = d * .3;
+				if (!a || a < Math.abs(c)) { a = c; s = p / 4; }
+				else s = p / (2 * Math.PI) * Math.asin(c / a);
+				return (a * Math.pow(2, -10 * t) * Math.sin((t * d - s) * (2 * Math.PI) / p) + c + b);
+			}
+			case 'easeInOutElastic': {
+				if (t == 0) return b;
+				if ((t /= d / 2) == 2) return b + c;
+				if (!p) p = d * (.3 * 1.5);
+				if (!a || a < Math.abs(c)) { a = c; s = p / 4; }
+				else s = p / (2 * Math.PI) * Math.asin(c / a);
+				if (t < 1) return -.5 * (a * Math.pow(2, 10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p)) + b;
+				return a * Math.pow(2, -10 * (t -= 1)) * Math.sin((t * d - s) * (2 * Math.PI) / p) * .5 + c + b;
+			}
+			case 'easeInBack': {
+				if (!s) s = 1.70158;
+				return c * (t /= d) * t * ((s + 1) * t - s) + b;
+			}
+			case 'easeOutBack': {
+				if (!s) s = 1.70158;
+				return c * ((t = t / d - 1) * t * ((s + 1) * t + s) + 1) + b;
+			}
+			case 'easeInOutBack': {
+				if (!s) s = 1.70158;
+				if ((t /= d / 2) < 1) return c / 2 * (t * t * (((s *= (1.525)) + 1) * t - s)) + b;
+				return c / 2 * ((t -= 2) * t * (((s *= (1.525)) + 1) * t + s) + 2) + b;
+			}
+			case 'easeInBounce': {
+				return c - ((t, b, c, d) => {
+					if ((t /= d) < (1 / 2.75)) return c * (7.5625 * t * t) + b;
+					else if (t < (2 / 2.75)) return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+					else if (t < (2.5 / 2.75)) return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+					else return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+				})(d - t, 0, c, d) + b;
+			}
+			case 'easeOutBounce': {
+				if ((t /= d) < (1 / 2.75)) return c * (7.5625 * t * t) + b;
+				else if (t < (2 / 2.75)) return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+				else if (t < (2.5 / 2.75)) return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+				else return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+			}
+			case 'easeInOutBounce': {
+				if (t < d / 2) return ((t, b, c, d) => {
+					if ((t /= d) < (1 / 2.75)) return c * (7.5625 * t * t) + b;
+					else if (t < (2 / 2.75)) return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+					else if (t < (2.5 / 2.75)) return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+					else return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+				})(t * 2, b, c / 2, d);
+				return ((t, b, c, d) => {
+					return c - ((t, b, c, d) => {
+						if ((t /= d) < (1 / 2.75)) return c * (7.5625 * t * t) + b;
+						else if (t < (2 / 2.75)) return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+						else if (t < (2.5 / 2.75)) return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+						else return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+					})(d - t, 0, c, b) + b;
+				})((t * 2) - d, b + c / 2, c / 2, d);
 			}
 		}
 	}
@@ -2185,9 +2254,7 @@ lve.root.const.ObjectSession = class {
 			case 'object': {
 				return this;
 			}
-			case 'function': {
-				// skip
-			}
+			case 'function':
 			case 'string': {
 				return retArr;
 			}
@@ -2763,9 +2830,7 @@ lve.root.fn.canvasReset = (_item = { style: {}, relative: {} }) => {
 
 lve.root.fn.initElement = (that, _onload) => {
 	switch (that.type) {
-		case 'image': {
-			// skip
-		}
+		case 'image':
 		case 'sprite': {
 			that.element = document.createElement('img');
 			break;
