@@ -1,7 +1,8 @@
 /* Light Visualnovel Engine
  *
  * Made by izure.org | 'LVE.js (C) izure.org 2016. All rights reserved.'
- * http://izure.org
+ * MIT LICENSE
+ * -> http://izure.org
  *
  * Dev Blog -> http://blog.izure.org
  * Dev Center -> http://cafe.naver.com/lvejs
@@ -894,7 +895,7 @@ lve.root.const.ObjectSession = class {
 					const
 						element = this.element,
 						widthScale = element.width / this.__system__.sprite_init.stage / element.height,
-						heightScale = element.height / element.width;
+						heightScale = element.height / (element.width / this.__system__.sprite_init.stage);
 
 					// 양쪽 변 모두 auto일 경우
 					if (style.width == 'auto' && style.height == 'auto') {
@@ -2181,7 +2182,7 @@ lve.root.const.ObjectSession = class {
 			work = (_item) => {
 				const
 					sceneName = typeof _sceneName == 'function' ? (_sceneName(_item) || '') : _sceneName,
-					sceneNames = sceneName.split(' ');
+					sceneNames = Array.isArray(sceneName) ? sceneName : sceneName.split(' ');
 
 				for (let i = 0, len = sceneNames.length; i < len; i++) {
 					if (sceneNames[i] === _item.scene) {
