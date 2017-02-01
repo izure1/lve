@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.4.1' // lve.js 버전을 뜻합니다
+	version: '2.4.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -366,7 +366,7 @@ lve.root.const.ObjectSession = class {
 		const
 			data = lve.root.fn.adjustJSON(_data, this, this),
 			stylePropObj = {
-				text: { width: 'auto', height: 'auto', gradientType: 'linear' },
+				text: { width: 'auto', gradientType: 'linear' },
 				image: { width: 'not_ready', height: 'not_ready' },
 				sprite: { width: 'not_ready', height: 'not_ready' },
 				circle: { gradientType: 'radial' },
@@ -473,7 +473,7 @@ lve.root.const.ObjectSession = class {
 			events: {},
 			drawing: true,
 			hasGradient: false,
-			textWidth: 'auto',
+			textWidth: 'auto'
 		};
 
 		vars.objects.push(this);
@@ -512,6 +512,11 @@ lve.root.const.ObjectSession = class {
 								case 'src': {
 									item.src = value;
 									lve.root.fn.initElement(item);
+									break;
+								}
+								case 'text': {
+									item.text = value;
+									lve.root.fn.getTextWidth(item);
 									break;
 								}
 								case 'scene': {
@@ -833,26 +838,65 @@ lve.root.const.ObjectSession = class {
 		}
 
 		// 1차 사물 그리기 예외 처리
+		this.__system__.drawing = false;
+
+		switch (this.type) {
+			case 'camera': {
+				return;
+			}
+			case 'image': {
+				if (this.src === undefined) {
+					return;
+				}
+				else if (this.element.complete != true) {
+					return;
+				}
+
+			}
+			case 'video': {
+				if (this.src === undefined) {
+					return;
+				}
+			}
+			case 'sprite': {
+				if (this.src === undefined) {
+					return;
+				}
+				else if (this.element.complete != true) {
+					return;
+				}
+			}
+			case 'text': {
+				if (this.text === undefined) {
+					return;
+				}
+				else if (this.text === '') {
+					return;
+				}
+				else if (this.style.fontSize <= 0) {
+					return;
+				}
+				else if (this.style.width === 'auto') {
+					return;
+				}
+				else if (this.style.height === 'auto') {
+					return;
+				}
+			}
+		}
+
 		if (
-			relative.perspective <= 0 || // 카메라보다 뒤에 있을 시
-			this.type == 'camera' || // camera타입
-			this.type == 'image' && this.src === undefined || // image타입이며 url이 지정되지 않음
-			this.type == 'image' && this.element.complete != true || // image타입이며, 아직 element가 로드되지 않았을 시
-			this.type == 'video' && this.src === undefined || // video타입이며 url이 지정되지 않음
-			this.type == 'sprite' && this.src === undefined || // sprite타입이며 url이 지정되지 않음
-			this.type == 'sprite' && this.element.complete != true || // sprite타입이며, 아직 element가 로드되지 않았을 시
-			this.src && this.element === {} || // src 속성을 가지고 있으나 로드되지 않음
-			!this.src && !style.color && !hasGradient || // src 속성이 없으며 color, gradient가 지정되지 않음
-			this.type == 'text' && !this.text === undefined || // text타입이면서 text가 지정되지 않음
-			this.type == 'text' && style.fontSize <= 0 || // text타입이면서 fontSize가 지정되지 않았거나 0보다 작을 때
-			relative.opacity <= 0 || // 투명도가 0일 경우
-			style.width <= 0 || // width 가 0일 경우
-			style.height <= 0 || // height 가 0일 경우
-			style.scale <= 0 // scale이 0일 경우
+			relative.perspective <= 0 ||
+			relative.opacity <= 0 ||
+			this.style.width <= 0 ||
+			this.style.height <= 0 ||
+			this.style.scale <= 0
 		) {
-			this.__system__.drawing = false;
 			return;
 		}
+
+		this.__system__.drawing = true;
+
 
 		const
 			canvas = initSetting.canvas,
@@ -2746,21 +2790,50 @@ lve.root.fn.getTextWidth = (_obj) => {
 		ctx = lve.root.vars.initSetting.canvas.context,
 		style = _obj.style;
 
+	const
+		cars = _obj.text.split('\n'),
+		breakPointArr = [0];
+
 	ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
 
-	let textWidth = ctx.measureText(_obj.text).width;
-	// 문자열 길이가 전체 길이보다 크다면
-	// 전체 길이로 축소
-	if (style.width === 'auto') {
-		style.width = textWidth;
+	if (_obj.style.width == 'auto') {
+		style.width = 0;
+
+		for (let i = 0, len_i = cars.length; i < len_i; i++) {
+
+			const
+				lineTextWidth = ctx.measureText(cars[i]).width,
+				lineTextOffset = breakPointArr[breakPointArr.length - 1] + cars[i].length;
+
+			if (_obj.style.width < lineTextWidth) {
+				_obj.style.width = lineTextWidth;
+			}
+
+			breakPointArr.push(lineTextOffset);
+		}
 	}
-	else if (style.width < textWidth && style.width !== 'auto') {
-		textWidth = style.width;
+	else {
+
+		for (let i = 0, len_i = cars.length; i < len_i; i++) {
+
+			const
+				lineTextWidth = ctx.measureText(cars[i]).width,
+				lineTextOffset = breakPointArr[breakPointArr.length - 1] + cars[i].length;
+
+			console.log(lineTextWidth);
+
+			// 이 줄의 길이가 객체의 너비를 넘었음
+			if (_obj.style.width < lineTextWidth) {
+				//_obj.style.width = lineTextWidth;
+			}
+			else {
+				breakPointArr.push(lineTextOffset);
+			}
+		}
 	}
-	if (style.height == 'auto') {
-		style.height = style.fontSize;
-	}
-	_obj.__system__.textWidth = textWidth;
+
+	_obj.__system__.textWidth = style.width;
+	_obj.__system__.textBreakPointArr = breakPointArr;
 };
 
 lve.root.fn.isRotateVisible = (_item) => {
@@ -2922,8 +2995,9 @@ lve.root.fn.text = (_ctx, _type, _that, _x) => {
 
 	const
 		ctx = _ctx,
-		cars = _that.text.split('\n'),
-		relative = _that.relative;
+		relative = _that.relative,
+		breakPointArr = _that.__system__.textBreakPointArr,
+		text = _that.text.replace(/\n/g, '');
 
 	let
 		x = _x,
@@ -2942,28 +3016,27 @@ lve.root.fn.text = (_ctx, _type, _that, _x) => {
 		lineHeight = relative.lineHeight;
 	}
 
-	for (let i = 0; i < cars.length; i++) {
+	let
+		i = breakPointArr.length,
+		row = 1;
 
-		let line = '';
-		const words = cars[i].split(' ');
+	while (i--) {
+		const
+			startOffset = breakPointArr[i - 1],
+			endOffset = breakPointArr[i];
 
-		for (let n = 0; n < words.length; n++) {
-			const
-				testLine = line + words[n] + ' ',
-				testWidth = ctx.measureText(testLine).width;
+		let lineText = text.substring(startOffset, endOffset);
 
-			if (testWidth > relative.width) {
-				ctx[_type](line, x, y, relative.width);
-				line = words[n] + ' ';
-				y += lineHeight;
-			}
-			else {
-				line = testLine;
-			}
+		if (startOffset === undefined) {
+			lineText = text.substring(0, endOffset);
 		}
 
-		ctx[_type](line, x, y, relative.width);
-		y += lineHeight;
+		_ctx[_type](lineText, x, y - (row * lineHeight));
+		row++;
+	}
+
+	if (_that.style.height < y) {
+		_that.style.height = y;
 	}
 };
 

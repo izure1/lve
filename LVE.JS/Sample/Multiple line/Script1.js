@@ -1,0 +1,33 @@
+﻿function initLve() {
+	lve.init({
+		canvas: document.getElementById('canvas')
+	});
+
+	lve('camera').create({
+		type: 'camera'
+	}).use();
+}
+
+function createTextObj() {
+	lve('textObject').create({
+		type: 'text',
+		text: function (self) {
+			return `012\n345\n6789` || `Hello, World!\nMy name is ${self.name}.\nNice to meet you!\nWelcome LVE.JS World!`
+		}
+	}).css({
+		fontSize: 20,
+		color: 'blue'
+		});
+
+	lve('square').create({
+		type: 'square'
+	}).css({
+		width: 10,
+		height: 10
+	})
+}
+
+window.onload = () => {
+	initLve();
+	createTextObj();
+};
