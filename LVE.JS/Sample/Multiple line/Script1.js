@@ -17,14 +17,7 @@ function createTextObj() {
 	}).css({
 		fontSize: 20,
 		color: 'blue'
-		});
-
-	lve('square').create({
-		type: 'square'
-	}).css({
-		width: 10,
-		height: 10
-	})
+	});
 }
 
 window.onload = () => {

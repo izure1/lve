@@ -2820,23 +2820,43 @@ lve.root.fn.getTextWidth = (_obj) => {
 				lineTextWidth = ctx.measureText(cars[i]).width,
 				lineTextOffset = breakPointArr[breakPointArr.length - 1] + cars[i].length;
 
-			console.log(lineTextWidth);
-
-			// 이 줄의 길이가 객체의 너비를 넘었음
+			// 이 줄의 길이가 객체의 너비를 넘어 줄바꿈이 필요함
 			if (_obj.style.width < lineTextWidth) {
-				//_obj.style.width = lineTextWidth;
+
+				let row_lastOffset = 0;
+
+				for (let j = 0, len_j = cars[i].length; j < len_j; j++) {
+
+					const
+						testText = cars[i].substring(row_lastOffset, j),
+						arr_lastOffset = breakPointArr[breakPointArr.length - 1];
+
+					if (ctx.measureText(testText).width > _obj.style.width) {
+						row_lastOffset = j;
+						breakPointArr.push(arr_lastOffset + testText.length);
+					}
+				}
 			}
-			else {
-				breakPointArr.push(lineTextOffset);
-			}
+
+			breakPointArr.push(lineTextOffset);
 		}
 	}
 
+	let lineHeight;
+	if (isNaN(_obj.style.lineHeight - 0)) {
+		lineHeight = _obj.style.fontSize * (parseFloat(_obj.style.lineHeight) / 100);
+	}
+	else {
+		lineHeight = _obj.style.lineHeight - 0;
+	}
+
+	_obj.style.height = breakPointArr.length * lineHeight;
 	_obj.__system__.textWidth = style.width;
 	_obj.__system__.textBreakPointArr = breakPointArr;
 };
 
 lve.root.fn.isRotateVisible = (_item) => {
+
 	const
 		vars = lve.root.vars,
 		canvas_elem = vars.initSetting.canvas.element,
@@ -3018,25 +3038,21 @@ lve.root.fn.text = (_ctx, _type, _that, _x) => {
 
 	let
 		i = breakPointArr.length,
-		row = 1;
+		row = 0;
 
 	while (i--) {
 		const
-			startOffset = breakPointArr[i - 1],
-			endOffset = breakPointArr[i];
+			startOffset = breakPointArr[i - 1] || 0,
+			endOffset = breakPointArr[i] || text.length;
 
 		let lineText = text.substring(startOffset, endOffset);
 
-		if (startOffset === undefined) {
-			lineText = text.substring(0, endOffset);
-		}
-
 		_ctx[_type](lineText, x, y - (row * lineHeight));
 		row++;
-	}
 
-	if (_that.style.height < y) {
-		_that.style.height = y;
+		if (startOffset === 0) {
+			break;
+		}
 	}
 };
 
