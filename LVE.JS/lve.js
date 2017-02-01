@@ -613,7 +613,7 @@ lve.root.const.ObjectSession = class {
 
 				switch (typeof _data) {
 					case 'object': {
-						data = lve.root.fn.adjustJSON(_data, this.style, _item);
+						data = lve.root.fn.adjustJSON(_data, _item.style, _item);
 						break;
 					}
 					case 'function': {
@@ -655,7 +655,6 @@ lve.root.const.ObjectSession = class {
 									break;
 								}
 								case 'textAlign': {
-									// 
 									if (
 										_item.style.position === 'absolute' &&
 										_item.__system__.textWidth || 0 >= _item.style.width
