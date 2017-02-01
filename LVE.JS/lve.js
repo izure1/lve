@@ -850,12 +850,14 @@ lve.root.const.ObjectSession = class {
 				else if (this.element.complete != true) {
 					return;
 				}
+				break;
 
 			}
 			case 'video': {
 				if (this.src === undefined) {
 					return;
 				}
+				break;
 			}
 			case 'sprite': {
 				if (this.src === undefined) {
@@ -864,6 +866,7 @@ lve.root.const.ObjectSession = class {
 				else if (this.element.complete != true) {
 					return;
 				}
+				break;
 			}
 			case 'text': {
 				if (this.text === undefined) {
@@ -881,6 +884,7 @@ lve.root.const.ObjectSession = class {
 				else if (this.style.height === 'auto') {
 					return;
 				}
+				break;
 			}
 		}
 
@@ -1121,30 +1125,13 @@ lve.root.const.ObjectSession = class {
 					ctx.shadowOffsetX = relative.shadowOffsetX;
 					ctx.shadowOffsetY = relative.shadowOffsetY;
 				}
-				if (style.position == 'absolute') {
-					switch (style.textAlign) {
-						case 'left': {
-							left = relative.left;
-							break;
-						}
-						case 'center': {
-							left = relative.left + (relative.width / 2) - (relative.textWidth / 2);
-							break;
-						}
-						case 'right': {
-							left = relative.left + relative.width - relative.textWidth;
-							break;
-						}
-					}
-				} else {
-					left = relative.left;
-				}
+				
 				if (style.borderWidth) {
 					ctx.strokeStyle = style.borderColor;
 					ctx.lineWidth = relative.borderWidth;
-					fn.text(ctx, 'strokeText', this, left);
+					fn.text(ctx, 'strokeText', this);
 				}
-				fn.text(ctx, 'fillText', this, left);
+				fn.text(ctx, 'fillText', this);
 				break;
 			}
 			case 'video': {
@@ -2790,8 +2777,10 @@ lve.root.fn.getTextWidth = (_obj) => {
 		style = _obj.style;
 
 	const
-		cars = _obj.text.split('\n'),
+		cars = (_obj.text + '').split('\n'),
 		breakPointArr = [0];
+
+	let maxiumTextWidth = 0;
 
 	ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
 
@@ -2806,6 +2795,7 @@ lve.root.fn.getTextWidth = (_obj) => {
 
 			if (_obj.style.width < lineTextWidth) {
 				_obj.style.width = lineTextWidth;
+				maxiumTextWidth = lineTextWidth;
 			}
 
 			breakPointArr.push(lineTextOffset);
@@ -2850,7 +2840,7 @@ lve.root.fn.getTextWidth = (_obj) => {
 	}
 
 	_obj.style.height = breakPointArr.length * lineHeight;
-	_obj.__system__.textWidth = style.width;
+	_obj.__system__.textWidth = maxiumTextWidth;
 	_obj.__system__.textBreakPointArr = breakPointArr;
 };
 
@@ -3010,16 +3000,16 @@ lve.root.fn.initElement = (that, _onload) => {
 	}
 };
 
-lve.root.fn.text = (_ctx, _type, _that, _x) => {
+lve.root.fn.text = (_ctx, _type, _that) => {
 
 	const
 		ctx = _ctx,
 		relative = _that.relative,
 		breakPointArr = _that.__system__.textBreakPointArr,
-		text = _that.text.replace(/\n/g, '');
+		text = (_that.text + '').replace(/\n/g, '');
 
 	let
-		x = _x,
+		x = relative.left,
 		y = relative.bottom + relative.height,
 		lineHeight;
 
@@ -3044,9 +3034,32 @@ lve.root.fn.text = (_ctx, _type, _that, _x) => {
 			startOffset = breakPointArr[i - 1] || 0,
 			endOffset = breakPointArr[i] || text.length;
 
-		let lineText = text.substring(startOffset, endOffset);
+		const
+			rowText = text.substring(startOffset, endOffset),
+			rowWidth = _ctx.measureText(rowText).width * _that.style.scale;
 
-		_ctx[_type](lineText, x, y - (row * lineHeight));
+		let xx;
+
+		if (_that.style.position == 'absolute') {
+			switch (_that.style.textAlign) {
+				case 'left': {
+					xx = relative.left;
+					break;
+				}
+				case 'center': {
+					xx = relative.left + (relative.width / 2) - (rowWidth / 2);
+					break;
+				}
+				case 'right': {
+					xx = relative.left + relative.width - rowWidth;
+					break;
+				}
+			}
+		} else {
+			xx = relative.left;
+		}
+
+		_ctx[_type](rowText, xx, y - (row * lineHeight));
 		row++;
 
 		if (startOffset === 0) {
