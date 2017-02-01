@@ -15,6 +15,7 @@ function setText(_text) {
 		text: _text
 	}).css({
 		fontSize: 70,
+		borderWidth: 3,
 		color: 'blue'
 	});
 }

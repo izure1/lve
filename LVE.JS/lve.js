@@ -460,7 +460,8 @@ lve.root.const.ObjectSession = class {
 			gradientType: '',
 			gradient: {},
 			pointerEvents: true,
-			display: true
+			display: 'block',
+			lineHeight: '100%'
 		};
 		this.relative = { origin: { left: 0, bottom: 0 } };
 		this.element = {};
@@ -511,11 +512,6 @@ lve.root.const.ObjectSession = class {
 								case 'src': {
 									item.src = value;
 									lve.root.fn.initElement(item);
-									break;
-								}
-								case 'text': {
-									item.text = value;
-									lve.root.fn.getTextWidth(item);
 									break;
 								}
 								case 'scene': {
@@ -605,95 +601,105 @@ lve.root.const.ObjectSession = class {
 	}
 
 	css(_data) {
-		// 속성 적용
-		if (typeof _data == 'object') {
-			const
-				fn = lve.root.fn,
-				work = (item) => {
-					// 매개변수가 Object형일 경우
-					// 스타일 속성 대입
-					if (typeof _data == 'object') {
-						let data = fn.adjustJSON(_data, item.style, item);
-						// absolute, fixed 이외의 position 속성값을 가질 경우
-						if (
-							data.position !== undefined &&
-							data.position != 'absolute' &&
-							data.position != 'fixed'
-						) {
-							console.error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
-							console.error(item);
-							return;
-						}
+		const
+			retArr = [],
+			work = (_item) => {
+				let data;
 
-						for (let j in data) {
-							// 없는 Style 속성일 경우
-							if (j in item.style === false) {
-								continue;
-							}
-							// Camera 객체가 아니면서
-							// perspective가 변경되었을 시
-							if (item.type != 'camera' && j == 'perspective') {
-								// z-index 재정렬
-								lve.root.cache.isNeedSort++;
-							}
-							// text 객체이면서 width 속성이 변경되었을 시
-							else if (item.type == 'text' && j == 'width') {
-								item.style[j] = data[j];
-								fn.getTextWidth(item);
-								continue;
-							}
-							// gradient 속성이 변경되었을 시
-							else if (j == 'gradient') {
-								// gradient가 지정되었다면
-								if (!!Object.keys(data[j]).length) {
-									item.__system__.hasGradient = true;
-								}
-								else {
-									item.__system__.hasGradient = false;
-								}
-							}
-
-							item.style[j] = data[j];
-						}
-						item.emit('cssmodified');
+				switch (typeof _data) {
+					case 'object': {
+						data = lve.root.fn.adjustJSON(_data, this.style, _item);
+						break;
 					}
-				};
-
-			if (this.context) {
-				for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-					work(this.context[i]);
+					case 'function': {
+						data = _data(_item);
+						break;
+					}
+					case 'string': {
+						data = _data;
+						break;
+					}
 				}
+
+				switch (typeof data) {
+					case 'object': {
+
+						for (let i in data) {
+
+							switch (i) {
+								case 'position': {
+									if (data.position != 'absolute' && data.position != 'fixed') {
+										console.error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
+										console.trace(item);
+										return;
+									}
+									break;
+								}
+								case 'perspective': {
+									if (_item.type != 'camera') {
+										lve.root.cache.isNeedSort++;
+									}
+									break;
+								}
+								case 'width': {
+									if (_item.type == 'text') {
+										_item.style.width = data[i];
+										// get from modified text width
+										lve.root.fn.getTextWidth(_item);
+									}
+									break;
+								}
+								case 'textAlign': {
+									// 
+									if (
+										_item.style.position === 'absolute' &&
+										_item.__system__.textWidth || 0 >= _item.style.width
+									) {
+										console.warn('이 객체의 넓이(style.width)가 문자열의 길이보다 짧거나 같습니다. style.textAlign 속성은 정상적으로 변경되었으나, 정렬이 제대로 이루어지지 않은 것처럼 보일 것입니다.');
+										console.trace(_item);
+									}
+									break;
+								}
+								case 'gradient': {
+									if (Object.keys(data[i]).length != 0) {
+										_item.__system__.hasGradient = true;
+									}
+									else {
+										_item.__system__.hasGradient = false;
+									}
+								}
+							}
+
+							_item.style[i] = data[i];
+							_item.emit('cssmodified');
+						}
+
+						break;
+					}
+					case 'string': {
+						retArr.push(_item.style[data]);
+						break;
+					}
+				}
+			};
+
+		if (this.context) {
+			for (let i = 0, len = this.context.length; i < len; i++) {
+				work(this.context[i]);
 			}
-			else {
-				work(this);
-			}
-			// 객체 반환
-			return this;
 		}
-		// 속성 반환
 		else {
-			let rets = [],
-				work = (item) => {
-					// 매개변수가 없을 때
-					// 선택된 모든 객체의 style 속성 반환
-					if (!_data) {
-						rets.push(item.style);
-					}
-					else if (typeof _data == 'string') {
-						rets.push(item.style[_data]);
-					}
-				};
+			work(this);
+		}
 
-			if (this.context) {
-				for (let i = 0, len_i = this.context.length; i < len_i; i++) {
-					work(this.context[i]);
-				}
+		switch (typeof _data) {
+			case 'object': {
+				return this;
 			}
-			else {
-				work(this);
+			case 'function':
+			case 'string': {
+				return retArr;
 			}
-			// 결과 반환
-			return rets;
 		}
 	}
 
@@ -937,6 +943,7 @@ lve.root.const.ObjectSession = class {
 			relative.width = style.width * relativeScale;
 			relative.height = style.height * relativeScale;
 			relative.textWidth = this.__system__.textWidth * relativeScale;
+			relative.lineHeight = style.lineHeight;
 			relative.left = _getRelativePosition(this, 'left');
 			relative.bottom = _getRelativePosition(this, 'bottom');
 			relative.rotate = style.rotate - usingCamera.style.rotate;
@@ -954,6 +961,7 @@ lve.root.const.ObjectSession = class {
 			relative.width = style.width;
 			relative.height = style.height;
 			relative.textWidth = this.__system__.textWidth;
+			relative.lineHeight = style.lineHeight;
 			relative.left = style.left;
 			relative.bottom = canvas_elem.height - (style.bottom + style.height);
 			relative.rotate = style.rotate;
@@ -1091,9 +1099,9 @@ lve.root.const.ObjectSession = class {
 				if (style.borderWidth) {
 					ctx.strokeStyle = style.borderColor;
 					ctx.lineWidth = relative.borderWidth;
-					ctx.strokeText(this.text, left, relative.bottom + relative.height, relative.width);
+					fn.text(ctx, 'strokeText', this, left);
 				}
-				ctx.fillText(this.text, left, relative.bottom + relative.height, relative.width);
+				fn.text(ctx, 'fillText', this, left);
 				break;
 			}
 			case 'video': {
@@ -1504,7 +1512,7 @@ lve.root.const.ObjectSession = class {
 
 		if (e === undefined) {
 			console.error(`이벤트리스너가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
-			console.error(this);
+			console.trace(this);
 			return;
 		}
 
@@ -1518,7 +1526,7 @@ lve.root.const.ObjectSession = class {
 
 			if (events.indexOf(item) == -1) {
 				console.error(`${item}은(는) 존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
-				console.error(this);
+				console.trace(this);
 				return;
 			}
 			// 객체를 순회하며 이벤트 할당
@@ -1556,7 +1564,7 @@ lve.root.const.ObjectSession = class {
 
 		if (e === undefined) {
 			console.error(`이벤트가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
-			console.error(this);
+			console.trace(this);
 			return;
 		}
 
@@ -1566,7 +1574,7 @@ lve.root.const.ObjectSession = class {
 
 			if (events.indexOf(item.toLowerCase()) == -1) {
 				console.error(`존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
-				console.error(this);
+				console.trace(this);
 				return;
 			}
 			// 객체를 순회하며 이벤트 제거
@@ -1594,7 +1602,7 @@ lve.root.const.ObjectSession = class {
 			work = (item) => {
 				if (!item.src) {
 					console.error('객체에 src 속성이 없어 재생할 수 없습니다. attr 메서드를 이용하여 먼저 속성을 부여하십시오.');
-					console.error(item);
+					console.trace(item);
 					return;
 				}
 
@@ -1610,7 +1618,7 @@ lve.root.const.ObjectSession = class {
 					}
 					default: {
 						console.error('재생할 수 없는 객체입니다. 이 메서드는 type 속성이 sprite/video 같은 재생/정지가 가능한 객체에 이용하십시오.');
-						console.error(item);
+						console.trace(item);
 						return;
 					}
 				}
@@ -1644,8 +1652,8 @@ lve.root.const.ObjectSession = class {
 						break;
 					}
 					default: {
-						console.error('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
-						console.error(item);
+						console.warn('정지가 불가능한 객체입니다. 이 메서드는 type 속성이 video 같은 재생/정지가 가능한 객체에 이용하십시오.');
+						console.trace(item);
 						return;
 					}
 				}
@@ -1935,7 +1943,7 @@ lve.root.const.ObjectSession = class {
 		const
 			work = (item) => {
 				if (item.type !== 'text') {
-					console.error('measureText 메서드는 type:text 객체에만 사용할 수 있습니다');
+					console.warn('measureText 메서드는 type:text 객체에만 사용할 수 있습니다');
 					return;
 				}
 				item.css({ width: 'auto' });
@@ -2215,7 +2223,7 @@ lve.root.const.ObjectSession = class {
 
 				switch (typeof _data) {
 					case 'object': {
-						data = lve.root.fn.adjustJSON(_data, sprite_init, _item)
+						data = lve.root.fn.adjustJSON(_data, sprite_init, _item);
 						break;
 					}
 					case 'function': {
@@ -2557,6 +2565,7 @@ lve.root.fn.adjustJSON = (_data, _parent, _obj) => {
 			const
 				headChar = data_origin.substr(0, 2),
 				footChar = data_origin.substr(2);
+
 			// 계산식일 경우
 			if (calcFormulaArr.indexOf(headChar) != -1) {
 				switch (headChar) {
@@ -2675,7 +2684,7 @@ lve.root.fn.eventfilter = (e) => {
 		if (
 			item.type == 'camera' || // 카메라 객체일 경우
 			item.scene !== usingCamera.scene || // 현재 카메라와 다른 씬일 경우
-			!style.display || // display 속성값이 false일 경우
+			style.display == 'none' || // display 속성값이 none일 경우
 			!style.pointerEvents || // pointer-events 속성값이 none일 경우
 			ox < left || // 객체가 우측에 있을 경우
 			ox > (left + relative.width) || // 객체가 좌측에 있을 경우
@@ -2906,6 +2915,55 @@ lve.root.fn.initElement = (that, _onload) => {
 	// load element from source
 	if (that.src) {
 		that.element.src = that.src;
+	}
+};
+
+lve.root.fn.text = (_ctx, _type, _that, _x) => {
+
+	const
+		ctx = _ctx,
+		cars = _that.text.split('\n'),
+		relative = _that.relative;
+
+	let
+		x = _x,
+		y = relative.bottom + relative.height,
+		lineHeight;
+
+	if (
+		isNaN(relative.lineHeight - 0) === true
+	) {
+		if (relative.lineHeight.substr(-1) != '%') {
+			return;
+		}
+		lineHeight = relative.fontSize * parseFloat(relative.lineHeight) / 100;
+	}
+	else {
+		lineHeight = relative.lineHeight;
+	}
+
+	for (let i = 0; i < cars.length; i++) {
+
+		let line = '';
+		const words = cars[i].split(' ');
+
+		for (let n = 0; n < words.length; n++) {
+			const
+				testLine = line + words[n] + ' ',
+				testWidth = ctx.measureText(testLine).width;
+
+			if (testWidth > relative.width) {
+				ctx[_type](line, x, y, relative.width);
+				line = words[n] + ' ';
+				y += lineHeight;
+			}
+			else {
+				line = testLine;
+			}
+		}
+
+		ctx[_type](line, x, y, relative.width);
+		y += lineHeight;
 	}
 };
 

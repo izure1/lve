@@ -11,7 +11,7 @@
             m = cm * 100,
             km = m * 1000,
             ry = 9454254955488 * km,
-            day = 100;
+            day = 10000;
         // 태양 기준
         const sunWidth = 139 * 10000 * km;
 
@@ -70,12 +70,16 @@
                 type: "text",
                 text: name
             }).css({
-                fontSize: 100,
+				fontSize: function (self) {
+					return self.css('height')[0];
+				},
                 color: "white",
-                textAlign: "center"
+				position: 'fixed'
             }).follow(name, {
-                bottom: 0,
-                perspective: -1
+				bottom: function (self) {
+					return self.css('height')[0] * 2
+				},
+				perspective: -1
             });
         }
 
@@ -101,7 +105,7 @@
         }
 
         function setRandStar() {
-            for (var i = 0; i < 1000; i++) {
+            for (var i = 0; i < 10000; i++) {
                 let randWidth = Math.random() * 139 * 10000 * 550 * km,
                     randLeft = Math.random() * ry * 0.02,
                     randBottom = Math.random() * ry * 0.02,
@@ -164,8 +168,9 @@
                 height: 139 * 10000 * km,
                 shadowColor: "yellow",
                 shadowBlur: 10 * 10000 * km,
-                perspective: 0
-            }).addClass("planet fixed");
+                perspective: 0,
+				opacity: 0
+			}).addClass("planet fixed");
 
             lve("수성").create({
                 type: "image",
@@ -254,13 +259,7 @@
                 height: 49244 * km,
                 color: "lightblue",
                 perspective: 4497000000 * km + sunWidth
-				}).addClass("planet");
-
-			lve("*").findClass('planet').css({
-				perspective: function (self) {
-					return self.css('perspective')[0] / 1000
-				}
-			});
+			}).addClass("planet");
 
             rotate("수성", 88 * day);
             rotate("금성", 225 * day);
@@ -289,7 +288,7 @@
     </script>
 </head>
 <body>
-    <canvas width="800" height="450"></canvas>
+    <canvas width="1200" height="530"></canvas>
     <div>
         <button onclick="lve('camera').use();">기본 시점</button>
         <button onclick="lve('태양').use();">태양 시점</button>
@@ -304,8 +303,8 @@
     </div>
     <hr />
     <div>
-        <input type="range" min="100" max="3979" value="100"/><br />
-        좌측(편의시점) ↔ 우측(실제거리)
+        <input type="range" min="10" max="2000000" value="100" step="50000" style="width:100%" /><br />
+        좌측(편의시점) ↔ 중간(실제거리) ↔ 우측(망원경)
     </div>
 </body>
 </html>
