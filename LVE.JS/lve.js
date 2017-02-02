@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.4.3' // lve.js 버전을 뜻합니다
+	version: '2.5.0' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -520,11 +520,6 @@ lve.root.const.ObjectSession = class {
 									break;
 								}
 								case 'scene': {
-									if (lve.root.fn.checkCamera() === false) {
-										item[j] = value;
-										lve.root.cache.isNeedCaching++;
-										break;
-									}
 
 									let usingCamera = lve.root.vars.usingCamera;
 
@@ -555,6 +550,8 @@ lve.root.const.ObjectSession = class {
 											}
 										}
 									}
+
+									lve.root.cache.isNeedCaching++;
 								}
 								default: {
 									item[j] = value;
@@ -2344,25 +2341,39 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 
 	// 만일 캐싱 요청이 있을 경우 전 오브젝트 순회하며 캐싱할 것
 	if (isNeedCaching) {
-		let cameraScene;
+
+		let cameraSceneArr;
 		try {
-			cameraScene = usingCamera.scene;
+			cameraSceneArr = usingCamera.scene.split('::');
 		} catch (e) { };
 
 		cache.objectArr = [];
 
 		for (let i = 0, len_i = objects.length; i < len_i; i++) {
-			const item = objects[i];
-			if (
-				item.scene === cameraScene ||
-				item.scene === 'anywhere' ||
-				item.__system__.ani_init.count_length < 1 ||
-				item.type == 'sprite' && item.__system__.sprite_init.playing === true
-			) {
-				cache.objectArr.push(item);
+
+			let sceneCapture = cameraSceneArr[0];
+
+			for (let j = 0, len_j = cameraSceneArr.length; j < len_j; j++) {
+
+				const item = objects[i];
+
+				if (
+					item.scene === sceneCapture ||
+					item.scene === 'anywhere' ||
+					item.__system__.ani_init.count_length < 1 ||
+					item.type == 'sprite' && item.__system__.sprite_init.playing === true
+				){
+					cache.objectArr.push(item);
+					break;
+				}
+
+				if (cameraSceneArr[j + 1] !== undefined) {
+					sceneCapture += `::${cameraSceneArr[j + 1]}`;
+				}
 			}
 		}
-		isNeedCaching = 0;
+
+		cache.isNeedCaching = 0;
 	}
 
 	// 현재 시각 갱신
