@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.4.2' // lve.js 버전을 뜻합니다
+	version: '2.4.3' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -1349,18 +1349,24 @@ lve.root.const.ObjectSession = class {
 			kickTars = _tarObj.context || [_tarObj];
 		}
 		else {
-			kickTars = lve.root.cache.selectorKeyword[_tarObj];
+			kickTars = lve.root.cache.selectorKeyword[_tarObj] || [];
 		}
 		const
 			work = (item) => {
 				const item_follower = item.__system__.follow_init.follower;
-				for (let j = 0, len_j = item_follower.length; j < len_j; j++)
+				for (let j = 0, len_j = item_follower.length; j < len_j; j++) {
+					// All kick
+					if (_tarObj === undefined) {
+						item_follower[j].unfollow().emit('kicked');
+						continue;
+					}
 					// 해당 팔로워가 킥 리스트에 있을 경우
 					// 언팔로우
 					// 팔로워 kicked 이벤트 발생
 					if (kickTars.indexOf(item_follower[j]) != -1) {
 						item_follower[j].unfollow().emit('kicked');
 					}
+				}
 				// kick 이벤트 발생
 				item.emit('kick');
 			};
@@ -3059,7 +3065,7 @@ lve.root.fn.text = (_ctx, _type, _that) => {
 			xx = relative.left;
 		}
 
-		_ctx[_type](rowText, xx, y - (row * lineHeight));
+		_ctx[_type](rowText, xx, y - (row * lineHeight), relative.width);
 		row++;
 
 		if (startOffset === 0) {
