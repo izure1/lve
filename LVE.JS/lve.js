@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.5.0' // lve.js 버전을 뜻합니다
+	version: '2.5.1' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -888,6 +888,7 @@ lve.root.const.ObjectSession = class {
 		if (
 			relative.perspective <= 0 ||
 			relative.opacity <= 0 ||
+			usingCamera.scene.indexOf(this.scene) != 0 ||
 			this.style.width <= 0 ||
 			this.style.height <= 0 ||
 			this.style.scale <= 0
@@ -1525,6 +1526,8 @@ lve.root.const.ObjectSession = class {
 				delete keywords[this_name];
 			}
 		}
+
+		lve.root.cache.isNeedCaching++;
 	}
 
 	// 객체에 이벤트를 등록합니다
@@ -2024,6 +2027,7 @@ lve.root.const.ObjectSession = class {
 			work(this);
 		}
 
+		lve.root.cache.isNeedCaching++;
 		return lve(retObj);
 	}
 
@@ -2213,6 +2217,8 @@ lve.root.const.ObjectSession = class {
 			// push return object
 			retObj.context[i] = oldObj_deepcopy;
 		}
+
+		lve.root.cache.isNeedCaching++;
 		return lve(retObj);
 	}
 
@@ -2360,7 +2366,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 				if (
 					item.scene === sceneCapture ||
 					item.scene === 'anywhere' ||
-					item.__system__.ani_init.count_length < 1 ||
+					item.__system__.ani_init.count_length > 0 ||
 					item.type == 'sprite' && item.__system__.sprite_init.playing === true
 				){
 					cache.objectArr.push(item);
@@ -2385,10 +2391,12 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	// 설정 갱신
 	if (isDrawFrame) {
 		cache.lastDraw = timestamp - 1;
-		// 프레임 초기화
+
+		// reset frame
 		ctx.restore();
 		ctx.save();
-		// 전역 캔버스 설정
+
+		// global canvas setting
 		ctx.globalAlpha = 1;
 		ctx.fillStyle = usingCamera.backgroundColor || initSetting.backgroundColor;
 		ctx.clearRect(0, 0, ctx_width, ctx_height);
@@ -2773,14 +2781,33 @@ lve.root.fn.eventfilter = (e) => {
 lve.root.fn.getSceneObj = (sceneName) => {
 	const
 		objects = lve.root.vars.objects,
-		arr_ret = [];
+		retArr = [];
 
-	for (let i = 0, j = 0, len_i = objects.length; i < len_i; i++) {
-		const item = objects[i];
-		if (item.scene == sceneName)
-			arr_ret[j++] = item;
+	const sceneNameArr = sceneName.split('::');
+
+	for (let i = 0, len_i = objects.length; i < len_i; i++) {
+
+		let sceneCapture = sceneNameArr[0];
+
+		for (let j = 0, len_j = sceneNameArr.length; j < len_j; j++) {
+
+			const item = objects[i];
+
+			if (
+				item.scene === sceneCapture ||
+				item.scene === 'anywhere'
+			) {
+				retArr.push(item);
+				break;
+			}
+
+			if (sceneNameArr[j + 1] !== undefined) {
+				sceneCapture += `::${sceneNameArr[j + 1]}`;
+			}
+		}
 	}
-	return arr_ret;
+
+	return retArr;
 };
 
 lve.root.fn.checkCamera = () => {
@@ -2859,6 +2886,8 @@ lve.root.fn.getTextWidth = (_obj) => {
 	_obj.style.height = breakPointArr.length * lineHeight;
 	_obj.__system__.textWidth = maxiumTextWidth;
 	_obj.__system__.textBreakPointArr = breakPointArr;
+
+	lve.root.cache.isNeedCaching++;
 };
 
 lve.root.fn.isRotateVisible = (_item) => {
