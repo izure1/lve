@@ -888,7 +888,7 @@ lve.root.const.ObjectSession = class {
 		if (
 			relative.perspective <= 0 ||
 			relative.opacity <= 0 ||
-			this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0
+			this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0 ||
 			this.style.width <= 0 ||
 			this.style.height <= 0 ||
 			this.style.scale <= 0
