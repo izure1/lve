@@ -2721,13 +2721,16 @@ lve.root.fn.eventfilter = (e) => {
 	vars.objects.sort((a, b) => {
 		return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 	});
+
 	// mousemove 이벤트일 경우
 	// arr_targetlst 갱신하여 mouseover 객체 정보를 담은 배열도 추가하기
 	if (e.type == 'mousemove') {
 		const arr_mouseoverlst = canvasEventKeyword['mouseover'];
+
 		arr_targetlst = arr_targetlst.concat(arr_mouseoverlst);
 		arr_targetlst_len = arr_targetlst.length;
 	}
+
 	for (let i = 0; i < arr_targetlst_len; i++) {
 		const
 			item = arr_targetlst[i],
@@ -2735,10 +2738,11 @@ lve.root.fn.eventfilter = (e) => {
 			relative = item.relative,
 			left = relative.left,
 			top = relative.bottom;
+
 		// 예외 처리
 		if (
 			item.type == 'camera' || // 카메라 객체일 경우
-			item.scene !== usingCamera.scene || // 현재 카메라와 다른 씬일 경우
+			item.scene != 'anywhere' && usingCamera.scene.indexOf(item.scene) != 0 || // 현재 카메라와 다른 씬일 경우
 			style.display == 'none' || // display 속성값이 none일 경우
 			!style.pointerEvents || // pointer-events 속성값이 none일 경우
 			ox < left || // 객체가 우측에 있을 경우
