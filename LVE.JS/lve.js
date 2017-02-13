@@ -2616,7 +2616,7 @@ lve.root.fn.adjustJSON = (_data, _parent, _obj) => {
 		if (typeof data_origin == 'function' && _obj) {
 			data_origin = data_origin(_obj);
 		}
-		else if (typeof data_origin == 'string') {
+		if (typeof data_origin == 'string') {
 			const
 				headChar = data_origin.substr(0, 2),
 				footChar = data_origin.substr(2);
@@ -2996,8 +2996,10 @@ lve.root.fn.initElement = (that, _onload) => {
 				if (that.style.height === 'not_ready') {
 					that.style.height = that.element.height || 10;
 				}
+
+				that.emit('load');
+
 				if (typeof _onload == 'function') {
-					that.emit('load');
 					_onload(that);
 				}
 			};
