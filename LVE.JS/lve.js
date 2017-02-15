@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.5.1' // lve.js 버전을 뜻합니다
+	version: '2.5.2' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -353,13 +353,13 @@ lve.root.const.ObjectSession = class {
 			fn = lve.root.fn;
 
 		if (!_data.type) {
-			console.error(`type 속성은 객체 필수 속성입니다. 다음 중 한 가지를 필수로 선택해주세요. (${consts.arr_type.join(', ')})`);
+			throw new Error(`type 속성은 객체 필수 속성입니다. 다음 중 한 가지를 필수로 선택해주세요. (${consts.arr_type.join(', ')})`);
 			return;
 		}
 		else if (
 			consts.arr_type.indexOf(_data.type.toLowerCase()) == -1
 		) {
-			console.error(`${_data.type} 은(는) 존재하지 않는 type 속성입니다. 이용할 수 있는 type 속성은 다음과 같습니다. (${consts.arr_type.join(', ')})`);
+			throw new Error(`${_data.type} 은(는) 존재하지 않는 type 속성입니다. 이용할 수 있는 type 속성은 다음과 같습니다. (${consts.arr_type.join(', ')})`);
 			return;
 		}
 
@@ -631,7 +631,7 @@ lve.root.const.ObjectSession = class {
 							switch (i) {
 								case 'position': {
 									if (data.position != 'absolute' && data.position != 'fixed') {
-										console.error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
+										throw new Error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
 										console.trace(item);
 										return;
 									}
@@ -769,7 +769,7 @@ lve.root.const.ObjectSession = class {
 					case 'linear': {
 						let
 							deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
-							men = Math.floor(deg / 90) % 4,
+							men = ~~(deg / 90) % 4,
 							spx = [0, width, width, 0],
 							spy = [0, 0, height, height],
 							sppx = [1, -1, -1, 1],
@@ -1543,11 +1543,14 @@ lve.root.const.ObjectSession = class {
 				// canvasEventKeyword에 객체가 등록되어 있지 않을 경우
 				if (eventObjs.indexOf(item) == -1) {
 					eventObjs.push(item);
+					eventObjs.sort((_a, _b) => {
+						return _a.style.perspective - _b.style.perspective;
+					});
 				}
 			};
 
 		if (e === undefined) {
-			console.error(`이벤트리스너가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
+			throw new Error(`이벤트리스너가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
 			console.trace(this);
 			return;
 		}
@@ -1561,7 +1564,7 @@ lve.root.const.ObjectSession = class {
 			const item = e[i];
 
 			if (events.indexOf(item) == -1) {
-				console.error(`${item}은(는) 존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
+				throw new Error(`${item}은(는) 존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
 				console.trace(this);
 				return;
 			}
@@ -1599,7 +1602,7 @@ lve.root.const.ObjectSession = class {
 			};
 
 		if (e === undefined) {
-			console.error(`이벤트가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
+			throw new Error(`이벤트가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
 			console.trace(this);
 			return;
 		}
@@ -1609,7 +1612,7 @@ lve.root.const.ObjectSession = class {
 			const item = e[i];
 
 			if (events.indexOf(item.toLowerCase()) == -1) {
-				console.error(`존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
+				throw new Error(`존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
 				console.trace(this);
 				return;
 			}
@@ -1637,7 +1640,7 @@ lve.root.const.ObjectSession = class {
 		const
 			work = (item) => {
 				if (!item.src) {
-					console.error('객체에 src 속성이 없어 재생할 수 없습니다. attr 메서드를 이용하여 먼저 속성을 부여하십시오.');
+					throw new Error('객체에 src 속성이 없어 재생할 수 없습니다. attr 메서드를 이용하여 먼저 속성을 부여하십시오.');
 					console.trace(item);
 					return;
 				}
@@ -1653,7 +1656,7 @@ lve.root.const.ObjectSession = class {
 						break;
 					}
 					default: {
-						console.error('재생할 수 없는 객체입니다. 이 메서드는 type 속성이 sprite/video 같은 재생/정지가 가능한 객체에 이용하십시오.');
+						throw new Error('재생할 수 없는 객체입니다. 이 메서드는 type 속성이 sprite/video 같은 재생/정지가 가능한 객체에 이용하십시오.');
 						console.trace(item);
 						return;
 					}
@@ -2142,7 +2145,7 @@ lve.root.const.ObjectSession = class {
 	// 객체의 
 	load(_src, _complete) {
 		if (_src === undefined) {
-			console.error('최소한 1개의 매개변수가 필요합니다. 불러올 src 속성값을 입력하십시오.');
+			throw new Error('최소한 1개의 매개변수가 필요합니다. 불러올 src 속성값을 입력하십시오.');
 			return;
 		}
 
@@ -2316,6 +2319,7 @@ lve.root.const.ObjectSession = class {
  */
 
 lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
+
 	const
 		cache = lve.root.cache,
 		vars = lve.root.vars,
@@ -3304,7 +3308,7 @@ lve.fullScreen = (extend) => {
 				try {
 					canvas_elem.msRequestFullScreen();
 				} catch (e) {
-					console.error('브라우저가 전체화면 기능을 지원하지 않습니다');
+					throw new Error('브라우저가 전체화면 기능을 지원하지 않습니다');
 					return;
 				}
 			}
@@ -3328,89 +3332,101 @@ lve.data = (_data) => {
 };
 
 lve.calc = (_perspective, _data = {}) => {
+
 	if (_perspective === undefined || typeof _perspective != 'number') {
-		console.error('반드시 첫 번째 매개변수로 숫자를 넣어야 합니다.');
+		throw new Error('반드시 첫 번째 매개변수로 숫자를 넣어야 합니다.');
 		return;
 	}
+
 	const
 		data = lve.root.fn.adjustJSON(_data),
-		tmp_data = lve.root.fn.copyObject(data),
-		// 전역변수 지역화
-		vars = lve.root.vars,
-		initSetting = vars.initSetting,
-		usingCamera = vars.usingCamera,
+		rawDataObj = lve.root.fn.copyObject(data);
+
+	const
+		initSetting = lve.root.vars.initSetting,
+		usingCamera = lve.root.vars.usingCamera,
 		scaleDistance = usingCamera.scaleDistance || initSetting.scaleDistance;
 
 	data.width = data.width || 0;
 	data.height = data.height || 0;
 	data.left = data.left || 0;
 	data.bottom = data.bottom || 0;
+	data.scale = data.scale || 1;
 	data.perspective = _perspective;
-	// 반환값
+
 	const
-		ret = {},
-		// 임시 변수들
-		tmp_ret = {},
-		tmp_object = {
-			style: data,
-			relative: {}
-		},
-		// getRelativePosition 리스트
-		arr_positionList = ['left', 'bottom'],
-		// 상수 속성 리스트
-		arr_fixedProp = ['rotate', 'opacity', 'gradientDirection', 'scale'];
-	// getRelativeSize 실행
-	// isNaN 값 제외
+		virtualObject = { style: data, relative: {} },
+		posPropArr = ['left', 'bottom'],
+		constPropArr = ['rotate', 'opacity', 'gradientDirection', 'scale'];
+
+	const calcPropObj = {}, NaNPropObj = {}, posPropObj = {}, constPropObj = {};
+
 	for (let i in data) {
-		if (arr_positionList.indexOf(i) == -1) {
-			// 숫자식만 계산함
-			if (!isNaN(
-				data[i] - 0
-			)) {
-				tmp_ret[i] = lve.root.fn.getRelativeSize(tmp_object, data[i]);
-			}
-			// 숫자식이 아닐 경우
-			else {
-				tmp_ret[i] = data[i];
-			}
-		}
-		else {
-			tmp_ret[i] = data[i];
+		if (isNaN(data[i] - 0) === true) {
+			NaNPropObj[i] = data[i];
+			delete data[i];
 		}
 	}
-	// getRelativeSize와 사용자의 요청값을 비교하여 증감 비율 구하기
-	let
-		compare_option = Object.keys(tmp_ret)[0],
-		fixScale = data[compare_option] / tmp_ret[compare_option];
-	// 좌표값이 아닌 속성값을 증감 비율에 따라 보정
-	for (let i in tmp_ret) {
-		let isPosition = arr_positionList.indexOf(i) != -1;
-		if (!isPosition) {
-			// 숫자식만 계산함
-			if (!isNaN(
-				parseFloat(tmp_ret[i])
-			)) {
-				tmp_ret[i] *= fixScale * fixScale;
+
+	for (let i in data) {
+		if (posPropArr.indexOf(i) != -1) {
+			posPropObj[i] = data[i];
+			delete data[i];
+		}
+	}
+
+	for (let i in data) {
+		if (constPropArr.indexOf(i) != -1) {
+			constPropObj[i] = data[i];
+			delete data[i];
+		}
+	}
+
+	Object.assign(calcPropObj, data);
+
+	const compareProp = constPropObj.scale;
+	const fixScale = compareProp / lve.root.fn.getRelativeSize(virtualObject, compareProp);
+
+	for (let i in calcPropObj) {
+		calcPropObj[i] *= fixScale;
+	}
+
+	// 좌표값 계산
+	for (let i in posPropObj) {
+		switch (i) {
+			case 'left': {
+				const
+					centerpos = initSetting.canvas.element.width / 2,
+					fixedLeft = posPropObj.left - centerpos;
+
+				posPropObj.left = (fixedLeft * fixScale);
+				break;
+			}
+			case 'bottom': {
+				const
+					centerpos = initSetting.canvas.element.height / 2,
+					fixedBottom = posPropObj.bottom - centerpos;
+
+				posPropObj.bottom = (fixedBottom * fixScale);
+				break;
 			}
 		}
 	}
-	const canvas_elem = initSetting.canvas.element;
-	// 좌표값 적용
-	for (let i = 0, len_i = arr_positionList.length; i < len_i; i++) {
-		tmp_ret[arr_positionList[i]] *= fixScale;
+
+	const retObj = {};
+	// merge props
+	Object.assign(retObj, NaNPropObj);
+	Object.assign(retObj, calcPropObj);
+	Object.assign(retObj, posPropObj);
+	Object.assign(retObj, constPropObj);
+
+	for (let i in retObj) {
+		if (i in rawDataObj === false) {
+			delete retObj[i];
+		}
 	}
-	// 사용자가 요청한 속성만 담음
-	for (let i in tmp_ret) {
-		ret[i] = tmp_ret[i];
-	}
-	// 상수 속성 수치 보정
-	for (let i = 0, len_i = arr_fixedProp.length; i < len_i; i++) {
-		const key = arr_fixedProp[i];
-		if (tmp_ret[key] !== undefined)
-			ret[key] = tmp_data[key];
-	}
-	delete ret.perspective;
-	return ret;
+	
+	return retObj;
 };
 
 
