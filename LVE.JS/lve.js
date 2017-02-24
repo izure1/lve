@@ -485,7 +485,6 @@ lve.root.const.ObjectSession = class {
 		initor.initTextWidth();
 		initor.insertKeyword();
 
-		cache.isNeedSort++;
 		cache.isNeedCaching++;
 
 		delete this.context;
@@ -681,6 +680,10 @@ lve.root.const.ObjectSession = class {
 						retArr.push(_item.style[data]);
 						break;
 					}
+					case 'undefined': {
+						retArr.push(_item.style);
+						break;
+					}
 				}
 			};
 
@@ -699,6 +702,9 @@ lve.root.const.ObjectSession = class {
 			}
 			case 'function':
 			case 'string': {
+				return retArr;
+			}
+			case 'undefined': {
 				return retArr;
 			}
 		}
@@ -1227,7 +1233,6 @@ lve.root.const.ObjectSession = class {
 		// 카메라 갱신
 		vars.usingCamera = tarCamera;
 		// 객체 정렬
-		cache.isNeedSort++;
 		cache.isNeedCaching++;
 
 		return vars.usingCamera;
@@ -2353,6 +2358,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	if (isNeedCaching) {
 
 		let cameraSceneArr;
+		const allObjectArr = lve.root.vars.objects;
+
 		try {
 			cameraSceneArr = usingCamera.scene.split('::');
 		} catch (e) { };
@@ -2383,7 +2390,17 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			}
 		}
 
+		for (let i = 0, len_i = allObjectArr.length; i < len_i; i++) {
+			if (
+				allObjectArr[i].scene === 'anywhere' &&
+				cache.objectArr.indexOf(allObjectArr[i]) == -1
+			) {
+				cache.objectArr.push(allObjectArr[i]);
+			}
+		}
+
 		cache.isNeedCaching = 0;
+		cache.isNeedSort++;
 	}
 
 	// 현재 시각 갱신
@@ -2545,7 +2562,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		// z값이 변경되었을 시 재정렬
 		if (isNeedSort) {
 			cache.isNeedSort = 0;
-			objects.sort((a, b) => {
+			cache.objectArr.sort((a, b) => {
 				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 			});
 		}
@@ -3425,7 +3442,8 @@ lve.calc = (_perspective, _data = {}) => {
 			delete retObj[i];
 		}
 	}
-	
+
+	retObj.perspective = _perspective;
 	return retObj;
 };
 
