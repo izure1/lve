@@ -104,7 +104,7 @@ lve.root.vars = {
 	isStart: false, // 게임이 실행됐는지 알 수 있습니다
 	isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다
 	usingCamera: {}, // 사용중인 카메라 객체입니다
-	version: '2.5.2' // lve.js 버전을 뜻합니다
+	version: '2.6.0' // lve.js 버전을 뜻합니다
 };
 lve.root.cache = {
 	// 각 이벤트 룸 배열이 생성된 구조체.
@@ -120,6 +120,7 @@ lve.root.cache = {
 		click: [],
 		dblclick: []
 	},
+	globalEventKeyword: {},
 	selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됩니다
 	objectArr: [], // 캐싱된 객체들이 이곳에 저장되어, lve.root.fn.update 메서드 호출시 순회합니다
 	mouseoverItem: false, // 현재 mouseover 되어있는 객체가 저장됩니다
@@ -134,7 +135,7 @@ lve.root.cache = {
 lve.root.const = {
 	radian: Math.PI / 180,
 	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
-	arr_event: ['animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'custom', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat'], // 사용할 수 객체 이벤트입니다
+	arr_event: ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'custom', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat', 'use'], // 사용할 수 객체 이벤트입니다
 };
 lve.root.fn = {};
 
@@ -401,11 +402,6 @@ lve.root.const.ObjectSession = class {
 				}
 			}
 		};
-		initor.initEvent = () => {
-			for (let i = 0, len = consts.arr_event.length; i < len; i++) {
-				this.__system__.events[consts.arr_event[i]] = [];
-			}
-		};
 		initor.initElement = () => {
 			fn.initElement(this);
 		};
@@ -480,7 +476,6 @@ lve.root.const.ObjectSession = class {
 
 		initor.initAttribute();
 		initor.initStyle();
-		initor.initEvent();
 		initor.initElement();
 		initor.initTextWidth();
 		initor.insertKeyword();
@@ -488,6 +483,7 @@ lve.root.const.ObjectSession = class {
 		cache.isNeedCaching++;
 
 		delete this.context;
+		this.emit('create');
 		return this;
 	}
 
@@ -671,7 +667,7 @@ lve.root.const.ObjectSession = class {
 							}
 
 							_item.style[i] = data[i];
-							_item.emit('cssmodified');
+							_item.emit('cssmodified system.cssmodified');
 						}
 
 						break;
@@ -751,7 +747,7 @@ lve.root.const.ObjectSession = class {
 				if (this.type == 'text') {
 					switch (style.textAlign) {
 						case 'left': {
-							if (this.style.gradientType === 'linear') {
+							if (style.gradientType === 'linear') {
 								textAlign_fix = this.relative.textWidth / 2;
 							}
 							else {
@@ -878,13 +874,13 @@ lve.root.const.ObjectSession = class {
 				else if (this.text === '') {
 					return;
 				}
-				else if (this.style.fontSize <= 0) {
+				else if (style.fontSize <= 0) {
 					return;
 				}
-				else if (this.style.width === 'auto') {
+				else if (style.width === 'auto') {
 					return;
 				}
-				else if (this.style.height === 'auto') {
+				else if (style.height === 'auto') {
 					return;
 				}
 				break;
@@ -895,9 +891,9 @@ lve.root.const.ObjectSession = class {
 			relative.perspective <= 0 ||
 			relative.opacity <= 0 ||
 			this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0 ||
-			this.style.width <= 0 ||
-			this.style.height <= 0 ||
-			this.style.scale <= 0
+			style.width <= 0 ||
+			style.height <= 0 ||
+			style.scale <= 0
 		) {
 			return;
 		}
@@ -994,7 +990,7 @@ lve.root.const.ObjectSession = class {
 			relative.width = style.width * relativeScale;
 			relative.height = style.height * relativeScale;
 			relative.textWidth = this.__system__.textWidth * relativeScale;
-			relative.lineHeight = style.lineHeight;
+			relative.lineHeight = isNaN(style.lineHeight) ? style.lineHeight : style.lineHeight * relativeScale;
 			relative.left = _getRelativePosition(this, 'left');
 			relative.bottom = _getRelativePosition(this, 'bottom');
 			relative.rotate = style.rotate - usingCamera.style.rotate;
@@ -1004,22 +1000,25 @@ lve.root.const.ObjectSession = class {
 			})();
 		} else {
 			relative.perspective = style.perspective;
-			relative.fontSize = style.fontSize;
-			relative.borderWidth = style.borderWidth;
-			relative.shadowBlur = style.shadowBlur;
-			relative.shadowOffsetX = style.shadowOffsetX;
-			relative.shadowOffsetY = style.shadowOffsetY;
-			relative.width = style.width;
-			relative.height = style.height;
-			relative.textWidth = this.__system__.textWidth;
-			relative.lineHeight = style.lineHeight;
+			relative.fontSize = style.fontSize * style.scale;
+			relative.borderWidth = style.borderWidth * style.scale;
+			relative.shadowBlur = style.shadowBlur * style.scale;
+			relative.shadowOffsetX = style.shadowOffsetX * style.scale;
+			relative.shadowOffsetY = style.shadowOffsetY * style.scale;
+			relative.width = style.width * style.scale;
+			relative.height = style.height * style.scale;
+			relative.textWidth = this.__system__.textWidth * style.scale;
+			relative.lineHeight = isNaN(style.lineHeight) ? style.lineHeight : style.lineHeight * style.scale;
 			relative.left = style.left;
-			relative.bottom = canvas_elem.height - (style.bottom + style.height);
+			relative.bottom = canvas_elem.height - (style.bottom + (style.height * style.scale));
 			relative.rotate = style.rotate;
 			relative.blur = style.blur;
+			relative.scale = style.scale;
 		}
 		// 2차 사물 그리기 예외처리
 		if (
+			relative.width >= canvas_elem.width * 10 || // 캔버스 넓이보다 매우 클 경우
+			relative.height >= canvas_elem.height * 10 || // 캔버스 높이보다 매우 클 경우
 			relative.width <= 0 || //  width가 0보다 작을 때
 			relative.height <= 0 || // height가 0보다 작을 때
 			relative.width < disappearanceSize || // width가 소멸크기보다 작음
@@ -1200,23 +1199,27 @@ lve.root.const.ObjectSession = class {
 	 * 이는 사물이 적을 시 큰 문제가 되진 않습니다. 하지만 사물이 많아질수록 성능이 급격히 저하됩니다
 	 */
 	use() {
+
 		const
 			vars = lve.root.vars,
 			cache = lve.root.cache,
 			usingCamera = vars.usingCamera,
 			tarCamera = this.context ? this.context[0] : this;
+
 		// 아직 카메라가 설정되지 않았을 경우
 		if (!lve.root.fn.checkCamera()) {
 			vars.usingCamera = tarCamera;
+			vars.usingCamera.emit('use');
 			return tarCamera;
 		}
+
 		// 카메라가 지정되어 있고
 		// 현재와 다른 씬일 경우
 		if (usingCamera.scene != tarCamera.scene) {
 			const
 				arr_scene_old = lve.root.fn.getSceneObj(usingCamera.scene),
 				arr_scene_new = lve.root.fn.getSceneObj(tarCamera.scene);
-			// 현재 씬에서 비디오 객체를 순회하며 볼륨 음소거
+
 			for (let i = 0, len_i = arr_scene_old.length; i < len_i; i++) {
 				const item = arr_scene_old[i];
 				if (item.type == 'video') {
@@ -1230,9 +1233,8 @@ lve.root.const.ObjectSession = class {
 				}
 			}
 		}
-		// 카메라 갱신
 		vars.usingCamera = tarCamera;
-		// 객체 정렬
+		vars.usingCamera.emit('use');
 		cache.isNeedCaching++;
 
 		return vars.usingCamera;
@@ -1263,7 +1265,7 @@ lve.root.const.ObjectSession = class {
 					// 리스트 추가
 					tarObj_followInit_follower.push(item);
 					// cssModified 이벤트를 걸어서 현재 객체의 팔로워의 위치 변화 (css)
-					tarObj.on('followed cssmodified animateupdate animateend followupdate', (e) => {
+					tarObj.on('system.followed system.followupdate system.cssmodified system.animateupdate system.animateend', (e) => {
 						for (let j = 0, len_j = e.target.__system__.follow_init.follower.length; j < len_j; j++) {
 							const
 								follower = e.target.__system__.follow_init.follower[j],
@@ -1274,9 +1276,9 @@ lve.root.const.ObjectSession = class {
 							follower_style.bottom = tarObj.style.bottom + obj_follower.bottom;
 							follower_style.perspective = tarObj.style.perspective + obj_follower.perspective;
 
-							follower.emit('followupdate');
+							follower.emit('followupdate system.followupdate');
 						}
-					}).emit('followed'); // followed 이벤트 발생
+					}).emit('followed system.followed'); // followed 이벤트 발생
 				}
 			};
 
@@ -1325,7 +1327,7 @@ lve.root.const.ObjectSession = class {
 				item.emit('unfollow');
 				// 팔로잉 대상 cssModified 이벤트 제거
 				// 팔로잉 대상 unfollowed 이벤트 발생
-				item_following.off('cssmodified').emit('unfollowed');
+				item_following.off('system.cssmodified').emit('unfollowed');
 			};
 
 		if (this.context) {
@@ -1389,51 +1391,79 @@ lve.root.const.ObjectSession = class {
 	// 해당 객체의 Style 속성을 유동적으로 변경합니다
 	// 이미 움직이고 있었을 시 기존 설정 초기화
 	animate(_data, _duration = 1, _easing = 'linear', _complete) {
-		if (!_data) {
-			return;
+
+		if (!_data) return;
+
+		let easing, complete;
+		const lastArgu = arguments[arguments.length - 1];
+
+		switch (arguments.length) {
+			case 3: {
+				if (typeof lastArgu === 'string') {
+					easing = _easing;
+					complete = null;
+				}
+				else if (typeof lastArgu === 'function') {
+					easing = 'linear';
+					complete = lastArgu;
+				}
+				break;
+			}
+			case 4: {
+				easing = _easing;
+				complete = _complete;
+				break;
+			}
 		}
-		const
-			complete = arguments[arguments.length - 1],
-			work = (item) => {
-				const
-					data = lve.root.fn.adjustJSON(_data, item.style, item),
-					ani_init = item.__system__.ani_init;
 
-				ani_init.count = ani_init.count || {};
-				ani_init.count_max = ani_init.count_max || {};
-				ani_init.duration = ani_init.duration || {};
-				ani_init.easing = ani_init.easing || {};
-				ani_init.origin = ani_init.origin || {};
+		const work = (item) => {
+			const
+				data = lve.root.fn.adjustJSON(_data, item.style, item),
+				ani_init = item.__system__.ani_init;
 
-				for (let j in data) {
-					// animate 가능한 속성인 경우
-					// 불가능한 경우 -> #0075c8, red, DOMElement 등
-					if (
-						isNaN(data[j] - 0)
-					) {
-						continue;
+			ani_init.count = ani_init.count || {};
+			ani_init.count_max = ani_init.count_max || {};
+			ani_init.duration = ani_init.duration || {};
+			ani_init.easing = ani_init.easing || {};
+			ani_init.origin = ani_init.origin || {};
+
+			for (let j in data) {
+				// animate 가능한 속성인 경우
+				// 불가능한 경우 -> #0075c8, red, DOMElement 등
+				if (isNaN(data[j] - 0) === true) continue;
+				if (data[j] !== undefined && data[j] !== item.style[j]) {
+					let duration;
+					if (isNaN(_duration - 0) === false) {
+						duration = _duration;
+						ani_init.duration[j] = duration;
 					}
-					if (data[j] !== undefined && data[j] !== item.style[j]) {
-						ani_init.duration[j] = _duration;
-						ani_init[j] = data[j];
-						ani_init.origin[j] = item.style[j];
-						ani_init.count[j] = 0;
-						ani_init.count_max[j] = Math.ceil(ani_init.duration[j] / 1000 * 60);
-						ani_init.easing[j] = _easing;
+					else if (typeof _duration === 'object' && isNaN(_duration.speed) === false) {
+						const diff = Math.abs(data[j] - item.style[j]);
+						duration = diff / _duration.speed * 1000;
 					}
-				}
-				// animate 속성 갯수값을 저장
-				ani_init.count_length = Object.keys(ani_init.count_max).length;
-				// 콜백 스택 저장
-				if (typeof complete == 'function') {
-					ani_init.callbacks.push({
-						count: Math.ceil(_duration / 1000 * 60),
-						fn: complete
-					});
-				}
+					else return;
 
-				item.emit('animatestart');
-			};
+					// common change properties
+					ani_init[j] = data[j];
+					ani_init.duration[j] = duration;
+					ani_init.origin[j] = item.style[j];
+					ani_init.count[j] = 0;
+					ani_init.count_max[j] = Math.ceil(duration / 1000 * 60);
+					ani_init.easing[j] = easing;
+				}
+			}
+			// animate 속성 갯수값을 저장
+			ani_init.count_length = Object.keys(ani_init.count_max).length;
+			// 콜백 스택 저장
+			if (typeof complete === 'function') {
+				ani_init.callbacks.push({
+					count: Math.ceil(_duration / 1000 * 60),
+					fn: complete
+				});
+			}
+
+			item.emit('animatestart');
+		};
 
 		if (this.context) {
 			for (let i = 0, len_i = this.context.length; i < len_i; i++) {
@@ -1537,14 +1567,21 @@ lve.root.const.ObjectSession = class {
 
 	// 객체에 이벤트를 등록합니다
 	on(e, fn) {
+		const events = lve.root.const.arr_event;
 		const
-			events = lve.root.const.arr_event,
+			attachEvent = (event, item) => {
+				const eventRoomObj = item.__system__.events;
+				if (Array.isArray(eventRoomObj[event]) === false) {
+					eventRoomObj[event] = [];
+				}
+				if (eventRoomObj[event].indexOf(fn) == -1) {
+					eventRoomObj[event].push(fn);
+				}
+			},
 			attachCanvasEventList = (event, item) => {
 				const eventObjs = lve.root.cache.canvasEventKeyword[event];
 				// 캔버스 이벤트가 아닐 경우
-				if (!eventObjs) {
-					return;
-				}
+				if (!eventObjs) return;
 				// canvasEventKeyword에 객체가 등록되어 있지 않을 경우
 				if (eventObjs.indexOf(item) == -1) {
 					eventObjs.push(item);
@@ -1560,28 +1597,21 @@ lve.root.const.ObjectSession = class {
 			return;
 		}
 
-		else if (!fn) {
-			return;
-		}
+		if (!fn) return;
 
 		e = e.toLowerCase().split(' ');
 		for (let i = 0, len_i = e.length; i < len_i; i++) {
 			const item = e[i];
 
-			if (events.indexOf(item) == -1) {
-				throw new Error(`${item}은(는) 존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
-				console.trace(this);
-				return;
-			}
 			// 객체를 순회하며 이벤트 할당
 			if (this.context) {
 				for (let j = 0, len_j = this.context.length; j < len_j; j++) {
-					this.context[j].__system__.events[item].push(fn);
+					attachEvent(item, this.context[j]);
 					attachCanvasEventList(item, this.context[j]);
 				}
 			}
 			else {
-				this.__system__.events[item].push(fn);
+				attachEvent(item, this);
 				attachCanvasEventList(item, this);
 			}
 		}
@@ -1590,19 +1620,29 @@ lve.root.const.ObjectSession = class {
 	}
 
 	// 객체에 이벤트 제거합니다
-	off(e) {
+	off(e, fn) {
+		const events = lve.root.const.arr_event;
 		const
-			events = lve.root.const.arr_event,
-			removeAttachCanvasEventList = (event, item) => {
-				const eventObjs = lve.root.cache.canvasEventKeyword[event];
-				// 캔버스 이벤트가 아닐 경우
-				if (!eventObjs) {
-					return;
+			removeEvent = (event, item) => {
+				const eventRoomObj = item.__system__.events;
+				if (fn) {
+					const index = eventRoomObj[event].indexOf(fn);
+					if (index === -1) return;
+					eventRoomObj[event].splice(index, 1);
 				}
-				let obj_i = eventObjs.indexOf(item);
-				// canvasEventKeyword에 객체가 등록되어 있을 경우
-				if (obj_i != -1) {
-					eventObjs.splice(obj_i, 1);
+				else {
+					eventRoomObj[event] = undefined;
+				}
+			},
+			removeCanvasEventList = (event, item) => {
+				const eventObj = lve.root.cache.canvasEventKeyword[event];
+				// if all canvas event was removed
+				if (item.__system__.events[event] !== undefined) return;
+				// it's not canvas event
+				if (!eventObj) return;
+
+				if (eventObj.indexOf(item) != -1) {
+					eventObj.splice(obj_i, 1);
 				}
 			};
 
@@ -1616,21 +1656,16 @@ lve.root.const.ObjectSession = class {
 		for (let i = 0, len_i = e.length; i < len_i; i++) {
 			const item = e[i];
 
-			if (events.indexOf(item.toLowerCase()) == -1) {
-				throw new Error(`존재하지 않는 이벤트입니다. 이용할 수 있는 이벤트는 다음과 같습니다. (${events.join(', ')})`);
-				console.trace(this);
-				return;
-			}
 			// 객체를 순회하며 이벤트 제거
 			if (this.context) {
 				for (let j = 0, len_j = this.context.length; j < len_j; j++) {
-					this.context[j].__system__.events[item] = [];
-					removeAttachCanvasEventList(item, this.context[j]);
+					removeEvent(item, this.context[j]);
+					removeCanvasEventList(item, this.context[j]);
 				}
 			}
 			else {
-				this.__system__.events[item] = [];
-				removeAttachCanvasEventList(item, this);
+				removeEvent(item, this);
+				removeCanvasEventList(item, this);
 			}
 		}
 
@@ -1957,17 +1992,21 @@ lve.root.const.ObjectSession = class {
 			events = e.toLowerCase().split(' '),
 			work = (item) => {
 				for (let j = 0, len_j = events.length; j < len_j; j++) {
+					const event = events[j];
 					const
-						tarEvent = events[j],
-						arr_eventList = item.__system__.events[tarEvent],
-						eObj = {
-							type: tarEvent,
-							target: item,
-							originalEvent: detail
-						};
+						globalEventArr = lve.root.cache.globalEventKeyword[event] || [],
+						itemEventsArr = item.__system__.events[event] || [];
+					const eventInfoObj = {
+						type: event,
+						target: item,
+						originalEvent: detail
+					};
 
-					for (let k in arr_eventList) {
-						arr_eventList[k](eObj);
+					for (let k = 0, len_k = globalEventArr.length; k < len_k; k++) {
+						globalEventArr[k](eventInfoObj);
+					}
+					for (let k = 0, len_k = itemEventsArr.length; k < len_k; k++) {
+						itemEventsArr[k](eventInfoObj);
 					}
 				}
 			};
@@ -2108,7 +2147,7 @@ lve.root.const.ObjectSession = class {
 					if (!_data) {
 						rets.push(item.__system__.data);
 					}
-					else if (typeof _data == 'string' && !!tarData) {
+					else if (typeof _data == 'string') {
 						rets.push(tarData);
 					}
 				};
@@ -2155,9 +2194,8 @@ lve.root.const.ObjectSession = class {
 		}
 
 		const
-			src = typeof _src == 'function' ? _src(this) : _src,
 			work = (_item) => {
-				_item.src = src;
+				_item.src = typeof _src == 'function' ? _src(_item) : _src;
 				_item.style.width = 'not_ready';
 				_item.style.height = 'not_ready';
 				lve.root.fn.initElement(_item, _complete);
@@ -2171,6 +2209,7 @@ lve.root.const.ObjectSession = class {
 		else {
 			work(this);
 		}
+		return this;
 	}
 
 	// >= v2.0.3
@@ -2496,7 +2535,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			) {
 				item_style[j] = item.getEasingData(j);
 				item_ani_count[j] += item_timescale;
-				item.emit('animateupdate');
+				item.emit('animateupdate system.animateupdate');
 			}
 			// style.perspective 값이 변경되었을 시
 			// isNeedSort 설정
@@ -2519,9 +2558,10 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			// 해당 객체가 모든 속성이 animated 되었을 때
 			if (attr_translateend >= attr_length) {
 				// animateend 이벤트 발생
-				const callbacks = item_ani.callbacks.concat();
-				item.__system__.ani_init = { callbacks: callbacks };
-				item.emit('animateend');
+				item.__system__.ani_init = { callbacks: item_ani.callbacks.concat() };
+				setTimeout(() => {
+					item.emit('animateend system.animateend');
+				}, 0);
 				cache.isNeedCaching++;
 			}
 		}
@@ -2675,7 +2715,7 @@ lve.root.fn.getRelativeSize = (tarObj, tarObj_size) => {
 		cameraObject = vars.usingCamera,
 		scaleDistance = cameraObject.scaleDistance || vars.initSetting.scaleDistance;
 
-	return tarObj_size * scaleDistance / (tarObj.style.perspective - cameraObject.style.perspective);
+	return tarObj_size * scaleDistance / ((tarObj.style.perspective - cameraObject.style.perspective) || -1);
 };
 
 lve.root.fn.getRelativePosition = (tarObj, direction) => {
@@ -2706,7 +2746,7 @@ lve.root.fn.getRelativePosition = (tarObj, direction) => {
 	else {
 		pt_center = canvas_elem.height / 2;
 		pt_fix = tarObj_relative.height;
-		camera_height = cameraObject_style.height;
+		camera_height = cameraObject_style.height * cameraObject_style.scale;
 		n = -1;
 	}
 	// 직관적인 변수명 재명시
@@ -3416,7 +3456,7 @@ lve.calc = (_perspective, _data = {}) => {
 					centerpos = initSetting.canvas.element.width / 2,
 					fixedLeft = posPropObj.left - centerpos;
 
-				posPropObj.left = (fixedLeft * fixScale);
+				posPropObj.left = (fixedLeft * fixScale) + usingCamera.css('left')[0];
 				break;
 			}
 			case 'bottom': {
@@ -3424,11 +3464,11 @@ lve.calc = (_perspective, _data = {}) => {
 					centerpos = initSetting.canvas.element.height / 2,
 					fixedBottom = posPropObj.bottom - centerpos;
 
-				posPropObj.bottom = (fixedBottom * fixScale);
+				posPropObj.bottom = (fixedBottom * fixScale) + usingCamera.css('bottom')[0];
 				break;
 			}
 		}
-	}
+	};
 
 	const retObj = {};
 	// merge props
@@ -3447,10 +3487,59 @@ lve.calc = (_perspective, _data = {}) => {
 	return retObj;
 };
 
-
 // >= 2.3.0
 lve.extend = (_method, _fn) => {
 	lve.root.const.ObjectSession.prototype[_method] = _fn;
+};
+
+// > 2.6.0
+lve.on = (e, fn) => {
+	const events = lve.root.const.arr_event;
+
+	if (e === undefined) {
+		throw new Error(`이벤트리스너가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
+		console.trace(this);
+		return;
+	}
+
+	if (!fn) return;
+
+	e = e.toLowerCase().split(' ');
+	for (let i = 0, len_i = e.length; i < len_i; i++) {
+		const event = e[i];
+		const eventRoomObj = lve.root.cache.globalEventKeyword;
+		if (Array.isArray(eventRoomObj[event]) === false) {
+			eventRoomObj[event] = [];
+		}
+		if (eventRoomObj[event].indexOf(fn) == -1) {
+			eventRoomObj[event].push(fn);
+		}
+	}
+};
+
+// >= 2.6.0
+lve.off = (e, fn) => {
+	const events = lve.root.const.arr_event;
+
+	if (e === undefined) {
+		throw new Error(`이벤트가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
+		console.trace(this);
+		return;
+	}
+
+	e = e.toLowerCase().split(' ');
+	for (let i = 0, len_i = e.length; i < len_i; i++) {
+		const event = e[i];
+		const eventRoomObj = lve.root.cache.globalEventKeyword;
+		if (fn) {
+			const index = eventRoomObj[event].indexOf(fn);
+			if (index === -1) return;
+			eventRoomObj[event].splice(index, 1);
+		}
+		else {
+			eventRoomObj[event] = undefined;
+		}
+	}
 };
 
 /*  밀봉 - 객체에 새로운 속성을 추가/제거할 순 없으나, 기존 속성의 값을 수정할 수 있음

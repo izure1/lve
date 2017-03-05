@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<title></title>
+	<script type="text/javascript" src="../../lve.js"></script>
+	<script type="text/javascript" src="particleManager.js"></script>
+	<script type="text/javascript">
+
+		const particleManager = new ParticleManager();
+
+		function initWorld() {
+			lve.init({
+				canvas: document.getElementById('canvas'),
+				backgroundColor: 'black'
+			});
+		}
+
+		function initCamera() {
+			lve('camera').create({ type: 'camera' }).use();
+		}
+		
+
+		window.onload = function () {
+			initWorld();
+			initCamera();
+
+			particleManager.init();
+			particleManager.create('dust', 500, 50);
+		};
+	</script>
+</head>
+<body>
+	<canvas id="canvas" width="800" height="450"></canvas>
+</body>
+</html>
