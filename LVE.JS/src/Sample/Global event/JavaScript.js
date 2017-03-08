@@ -12,6 +12,10 @@ function attachGlobalEvent() {
 			perspective: 90
 		}, 1000);
 	});
+
+	lve.on('create', function (e) {
+		e.target.on('mouseover', function (e) { e.target.css({ color: 'red' }) });
+	});
 }
 
 function initCamera() {
