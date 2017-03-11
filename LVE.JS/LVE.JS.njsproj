@@ -32,22 +32,21 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="README.md" />
-    <Content Include="Sample\Global event\HTML.html" />
-    <Content Include="Sample\Multiple line\index.html" />
     <Content Include="Sample\Performance tester\HTML.html" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="typings\index.d.ts" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Sample\Global event\JavaScript.js" />
     <Compile Include="Sample\Multiple line\Script1.js" />
     <Compile Include="Sample\Performance tester\JavaScript.js" />
+    <Compile Include="src\Sample\Window interface\lve.window.js" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Sample\Multiple line\" />
-    <Folder Include="Sample\Global event\" />
     <Folder Include="Sample\Performance tester\" />
+    <Folder Include="src\" />
+    <Folder Include="src\Sample\" />
+    <Folder Include="src\Sample\Window interface\" />
     <Folder Include="typings\" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->

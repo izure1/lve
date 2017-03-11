@@ -108,6 +108,7 @@ lve.root.vars = {
 	}
 };
 lve.root.cache = {
+	readyCallbacks: [],
 	// 각 이벤트 룸 배열이 생성된 구조체.
 	// 캔버스 이벤트가 등록된 객체는, 맞는 이벤트 룸에 등록되어 캔버스에서 이벤트가 발생했을 시, 이 배열을 순회하여 빠르게 검색합니다.
 	canvasEventKeyword: {
@@ -119,17 +120,15 @@ lve.root.cache = {
 	selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됩니다.
 	objectArr: [], // 캐싱된 객체들이 이곳에 저장되어, lve.root.fn.update 메서드 호출시 순회합니다.
 	mouseoverItem: false, // 현재 mouseover 되어있는 객체가 저장됩니다.
-	isNeedSort: 0,
-	isNeedCaching: 0,
+	isNeedSort: 0, isNeedCaching: 0,
 	loseTime: 0, // lve.pause, lve.play 등으로 멈추었던 총 interval timestamp가 저장됩니다.
 	lastDraw: 0, // 마지막으로 캔버스에 그려졌던 timestamp가 이곳에 저장됩니다.
-	now: 0,
-	fps: 0, // 현재 fps값이 프레임마다 갱신되어 저장됩니다.
+	now: 0, fps: 0, // 현재 fps값이 프레임마다 갱신되어 저장됩니다.
 	pauseTime: 0, // 마지막으로 lve.pause가 되었던 timestamp가 저장됩니다.
 	primary: 1
 };
 lve.root.const = {
-	version: '2.6.1',
+	version: '2.7.0',
 	radian: Math.PI / 180,
 	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
 	arr_event: ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat', 'use'], // 사용할 수 객체 이벤트입니다
@@ -479,96 +478,111 @@ lve.root.const.ObjectSession = class {
 	}
 
 	attr(rawdata) {
-		// 속성 적용
-		if (typeof rawdata == 'object') {
-			const work = (item) => {
-				// 매개변수가 Object형일 경우
-				// 속성 대입
-				if (typeof rawdata == 'object') {
-					const data = lve.root.fn.adjustJSON(rawdata, item, item);
-					for (let j in data) {
-						const value = data[j];
-						switch (j) {
-							case 'type': {
-								item.type = value;
-								lve.root.fn.initElement(item);
-								break;
-							}
-							case 'src': {
-								item.src = value;
-								lve.root.fn.initElement(item);
-								break;
-							}
-							case 'text': {
-								item.text = value;
-								lve.root.fn.getTextWidth(item);
-								break;
-							}
-							case 'scene': {
 
-								let usingCamera = lve.root.vars.usingCamera;
+		const retArr = [];
+		const work = (item) => {
 
-								if (item != usingCamera) {
-									if (item.type == 'video' && value != usingCamera.scene) {
-										item.element.muted = true;
+			let data;
+			switch (typeof rawdata) {
+				case 'object': {
+					data = lve.root.fn.adjustJSON(rawdata, item, item);
+					break;
+				}
+				case 'function': {
+					data = rawdata(item);
+					break;
+				}
+				case 'string': {
+					data = rawdata;
+					break;
+				}
+			}
+
+			switch (typeof data) {
+				case 'object':
+					{
+						for (let attribute in data) {
+							const value = data[attribute];
+							switch (attribute) {
+								case 'type':
+									{
+										item.type = value;
+										lve.root.fn.initElement(item);
+										break;
 									}
-								}
-
-								else if (item == usingCamera) {
-
-									let
-										oldVideoArr = lve.root.fn.getSceneObj(item.scene),
-										newVideoArr = lve.root.fn.getSceneObj(value);
-
-									for (let sceneObj of oldVideoArr) {
-										if (sceneObj.type !== 'video') continue;
-										sceneObj.element.muted = true;
+								case 'src':
+									{
+										item.src = value;
+										lve.root.fn.initElement(item);
+										break;
 									}
-
-									for (let sceneObj of newVideoArr) {
-										if (sceneObj.type !== 'video') continue;
-										sceneObj.element.muted = false;
+								case 'text':
+									{
+										item.text = value;
+										lve.root.fn.getTextWidth(item);
+										break;
 									}
-								}
+								case 'scene':
+									{
+										const usingCamera = lve.root.vars.usingCamera;
 
-								lve.root.cache.isNeedCaching++;
+										if (item != usingCamera) {
+											if (item.type === 'video'
+												&& value === usingCamera.scene) item.element.muted = true;
+										}
+										else if (item === usingCamera) {
+											const
+												oldVideoArr = lve.root.fn.getSceneObj(item.scene),
+												newVideoArr = lve.root.fn.getSceneObj(value);
+
+											for (let sceneObj of oldVideoArr) {
+												if (sceneObj.type !== 'video') continue;
+												sceneObj.element.muted = true;
+											}
+
+											for (let sceneObj of newVideoArr) {
+												if (sceneObj.type !== 'video') continue;
+												sceneObj.element.muted = false;
+											}
+										}
+										lve.root.cache.isNeedCaching++;
+										break;
+									}
+								default:
+									{
+										item[attribute] = value;
+										break;
+									}
 							}
-							default: {
-								item[j] = value;
-								break;
-							}
+
+							item[attribute] = data[attribute];
+							item.emit('attrmodified');
 						}
+						break;
 					}
-					item.emit('attrmodified');
-				}
-			};
-
-			if (!this.context) work(this);
-			else {
-				for (let item of this.context) work(item);
+				case 'string':
+					{
+						retArr.push(item[data]);
+						break;
+					}
+				case 'undefined':
+					{
+						retArr.push(item);
+						break;
+					}
 			}
-
-			// 객체 반환
-			return this;
 		}
-		// 속성 반환
+
+		if (!this.context) work(this);
 		else {
-			const rets = [];
-			const work = (item) => {
-				// 매개변수가 없을 때
-				// 선택된 모든 객체의 속성 반환
-				if (!rawdata) rets.push(item);
-				else if (typeof data == 'string') {
-					rets.push(item[data]);
-				}
-			};
+			for (let item of this.context) work(item);
+		}
 
-			if (!this.context) work(this);
-			else {
-				for (let item of this.context) work(item);
-			}
-
-			return rets;
+		switch (typeof rawdata) {
+			case 'object': return this;
+			case 'function':
+			case 'string': return retArr;
+			case 'undefined': return retArr;
 		}
 	}
 
@@ -595,51 +609,53 @@ lve.root.const.ObjectSession = class {
 
 			switch (typeof data) {
 				case 'object': {
-
-					for (let i in data) {
-
-						switch (i) {
-							case 'position': {
-								if (data.position != 'absolute' && data.position != 'fixed') {
-									throw new Error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
-									console.trace(item);
-									return;
+					for (let property in data) {
+						const value = data[property];
+						switch (property) {
+							case 'position':
+								{
+									if (data.position !== 'absolute'
+										&& data.position !== 'fixed')
+									{
+										throw new Error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
+										console.trace(item);
+									}
+									break;
 								}
-								break;
-							}
-							case 'perspective': {
-								if (item.type != 'camera') {
-									lve.root.cache.isNeedSort++;
+							case 'perspective':
+								{
+									if (item.type !== 'camera') lve.root.cache.isNeedSort++;
+									break;
 								}
-								break;
-							}
-							case 'width': {
-								if (item.type == 'text') {
-									item.style.width = data[i];
-									// get from modified text width
-									lve.root.fn.getTextWidth(item);
+							case 'width':
+								{
+									if (item.type === 'text') {
+										item.style.width = value;
+										lve.root.fn.getTextWidth(item);
+									}
+									break;
 								}
-								break;
-							}
-							case 'textAlign': {
-								if (
-									item.style.position === 'absolute' &&
-									item.__system__.textWidth || 0 >= item.style.width
-								) {
-									console.warn('이 객체의 넓이(style.width)가 문자열의 길이보다 짧거나 같습니다. style.textAlign 속성은 정상적으로 변경되었으나, 정렬이 제대로 이루어지지 않은 것처럼 보일 것입니다.');
-									console.trace(item);
+							case 'textAlign':
+								{
+									if (item.style.position === 'absolute'
+										&& item.__system__.textWidth || 0 >= item.style.width)
+									{
+										console.warn('이 객체의 넓이(style.width)가 문자열의 길이보다 짧거나 같습니다. style.textAlign 속성은 정상적으로 변경되었으나, 정렬이 제대로 이루어지지 않은 것처럼 보일 것입니다.');
+										console.trace(item);
+									}
+									break;
 								}
-								break;
-							}
-							case 'gradient': {
-								if (Object.keys(data[i]).length != 0) {
-									item.__system__.hasGradient = true;
+							case 'gradient':
+								{
+									if (Object.keys(value).length != 0) {
+										item.__system__.hasGradient = true;
+									}
+									else item.__system__.hasGradient = false;
+									break;
 								}
-								else item.__system__.hasGradient = false;
-							}
 						}
 
-						item.style[i] = data[i];
+						item.style[property] = value;
 						item.emit('cssmodified');
 					}
 
@@ -654,7 +670,7 @@ lve.root.const.ObjectSession = class {
 					break;
 				}
 			}
-		};
+		}
 
 		if (!this.context) work(this);
 		else {
@@ -821,7 +837,7 @@ lve.root.const.ObjectSession = class {
 		}
 
 		if (
-			relative.perspective <= 0 ||
+			style.positio === 'absolute' && relative.perspective <= 0 ||
 			relative.opacity <= 0 ||
 			this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0 ||
 			style.width <= 0 ||
@@ -1172,19 +1188,37 @@ lve.root.const.ObjectSession = class {
 	// 객체가 해당 사물을 쫒습니다
 	// 객체가 현재 위치를 직접 이동합니다
 	// 여러대의 객체가 선택되었을 시 가장 최초 객체를 선택
-	follow(selectObj, relpos = {}) {
+	follow(selectObj, relpos) {
 
 		let tarObj, tarObj_followInit_follower;
+		const retObj = { left: [], bottom: [], perspective: [] };
 		const work = (item) => {
+
+			if (!relpos) {
+
+				if (selectObj) {
+					if (selectObj in retObj === false) return;
+				}
+
+				const relative = item.__system__.follow_init.relative;
+
+				if (selectObj) retObj[selectObj].push(relative[selectObj]);
+				else {
+					for (let prop in retObj) {
+						retObj[prop].push(relative[prop]);
+					}
+				}
+				return;
+			}
 
 			const item_followInit = item.__system__.follow_init;
 
 			item_followInit.following = tarObj;
-			item_followInit.relative = {
-				bottom: relpos.bottom || 0,
-				left: relpos.left || 0,
-				perspective: relpos.perspective || 0
-			};
+			item_followInit.relative = item_followInit.relative || {};
+
+			if (relpos.left !== undefined) item_followInit.relative.left = relpos.left;
+			if (relpos.bottom !== undefined) item_followInit.relative.bottom = relpos.bottom;
+			if (relpos.perspective !== undefined) item_followInit.relative.perspective = relpos.perspective;
 
 			item.emit('follow');
 
@@ -1201,9 +1235,15 @@ lve.root.const.ObjectSession = class {
 							follower_style = follower.style,
 							obj_follower = follower.__system__.follow_init.relative;
 
-						follower_style.left = tarObj.style.left + obj_follower.left;
-						follower_style.bottom = tarObj.style.bottom + obj_follower.bottom;
-						follower_style.perspective = tarObj.style.perspective + obj_follower.perspective;
+						// get value from properties function
+						const
+							relativeLeft = typeof obj_follower.left === 'function' ? obj_follower.left(follower) : obj_follower.left || 0,
+							relativeBottom = typeof obj_follower.bottom === 'function' ? obj_follower.bottom(follower) : obj_follower.bottom || 0,
+							relativePersp = typeof obj_follower.perspective === 'function' ? obj_follower.perspective(follower) : obj_follower.perspective || 0;
+
+						follower_style.left = tarObj.style.left + relativeLeft;
+						follower_style.bottom = tarObj.style.bottom + relativeBottom;
+						follower_style.perspective = tarObj.style.perspective + relativePersp;
 
 						follower.emit('followupdate');
 					}
@@ -1211,27 +1251,35 @@ lve.root.const.ObjectSession = class {
 			}
 		};
 
-		if (selectObj instanceof lve.root.const.ObjectSession) {
-			tarObj = selectObj.get(0);
-		}
-		else {
-			tarObj = lve.root.cache.selectorKeyword[selectObj];
-			if (!tarObj) return;
-			if (tarObj.length > 0) {
-				tarObj = tarObj[0];
+		if (relpos) {
+			if (selectObj instanceof lve.root.const.ObjectSession) {
+				tarObj = selectObj.get(0);
 			}
-			else return;
+			else {
+				tarObj = lve.root.cache.selectorKeyword[selectObj];
+				if (!tarObj) return;
+				if (tarObj.length > 0) {
+					tarObj = tarObj[0];
+				}
+				else return;
+			}
+			tarObj_followInit_follower = tarObj.__system__.follow_init.follower;
+			// 기존 팔로우 초기화
+			lve(this).unfollow();
 		}
-		tarObj_followInit_follower = tarObj.__system__.follow_init.follower;
-		// 기존 팔로우 초기화
-		lve(this).unfollow();
 
 		if (!this.context) work(this);
 		else {
 			for (let item of this.context) work(item);
 		}
 
-		return this;
+		if (relpos) return this;
+		else {
+			if (selectObj) {
+				return retObj[selectObj];
+			}
+			else return retObj;
+		}
 	}
 
 	// 객체가 해당 사물을 쫒음을 멈춥니다
@@ -1403,7 +1451,7 @@ lve.root.const.ObjectSession = class {
 	}
 
 	// 객체를 삭제합니다
-	remove() {
+	remove(includefollower) {
 
 		const
 			vars = lve.root.vars, cache = lve.root.cache,
@@ -1411,38 +1459,50 @@ lve.root.const.ObjectSession = class {
 			canvas = vars.initSetting.canvas.element;
 
 		const work = (item) => {
-			// play 속성을 가지고 있는 객체일 경우
-			// Element 삭제
+
+			let isInclude = includefollower;
+			if (typeof includefollower === 'function') {
+				isInclude = includefollower(item);
+			}
+
+			// remove HTML Element
 			if (typeof item.element.play == 'function') {
 				canvas.appendChild(item.element);
 				canvas.removeChild(item.element);
 			}
-			// 캔버스 이벤트 삭제
+
+			// remove global canvas events
 			const canvasEventObjlst = lve.root.cache.canvasEventKeyword;
 			for (let event in canvasEventObjlst) {
 				const
 					arr_objlst = canvasEventObjlst[event],
 					item_i = arr_objlst.indexOf(item);
-				// 캔버스 이벤트가 등록된 객체일 경우
+
 				if (item_i != -1) {
 					arr_objlst.splice(item_i, 1);
 				}
 			}
+
 			// lve.root.cache.mouseoverItem 일 경우 초기화
 			if (cache.mouseoverItem == item) {
 				cache.mouseoverItem = false;
 			}
-			// 객체 삭제
+
 			objects.splice(objects.indexOf(item), 1);
 			keywords[item.name].splice(keywords[item.name].indexOf(item), 1);
-			// 사용중인 카메라 객체일 경우
-			// 카메라 설정 초기화
+			// if camera object
 			if (item == vars.usingCamera) {
 				vars.usingCamera = {};
 			}
+
 			// 키워드 삭제
 			delete keywords[`[PRIMARY=${item.primary}]`];
 			delete keywords[`[primary=${item.primary}]`];
+
+			// 자식 요소 삭제
+			if (!isInclude) return;
+			const followers = item.follower().context;
+			for (let children of followers) children.remove(includefollower);
 		};
 
 		// 객체정보배열을 돌면서 일괄삭제 후
@@ -2158,6 +2218,29 @@ lve.root.const.ObjectSession = class {
 			}
 		}
 	}
+
+	// >= 2.7.0
+	filter(filter) {
+		const retArr = [];
+		const work = (item) => {
+			try {
+				if (filter(item)) retArr.push(item);
+			} catch (e) {
+				throw new Error('find 메서드의 인수는 반드시 함수여야만 합니다.');
+				return;
+			}
+		};
+
+
+		if (!this.context) work(this);
+		else {
+			for (let item of this.context) work(item);
+		}
+
+		// update session
+		this.context = retArr;
+		return this;
+	}
 };
 
 
@@ -2219,7 +2302,8 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 					item.scene === sceneCapture ||
 					item.scene === 'anywhere' ||
 					item.__system__.ani_init.count_length > 0 ||
-					item.type == 'sprite' && item.__system__.sprite_init.playing === true
+					item.type === 'sprite' && item.__system__.sprite_init.playing === true ||
+					item.style.position === 'fixed'
 				) {
 					cache.objectArr.push(item);
 					break;
@@ -2413,6 +2497,15 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 	}
 };
 
+lve.root.fn.ready = () => {
+	const callbacks = lve.root.cache.readyCallbacks;
+	let callbacklen = callbacks.length;
+	while (callbacklen--) {
+		callbacks[callbacklen]();
+		callbacks.splice(callbacklen, 1);
+	}
+};
+
 lve.root.fn.copyObject = (rawdata) => {
 	let data;
 	if (typeof rawdata == 'object') {
@@ -2420,12 +2513,8 @@ lve.root.fn.copyObject = (rawdata) => {
 			data = rawdata.cloneNode(true);
 			return data;
 		}
-		else if (Array.isArray(rawdata)) {
-			data = [];
-		}
-		else {
-			data = {};
-		}
+		else if (Array.isArray(rawdata)) data = [];
+		else data = {};
 
 		for (let i in rawdata) {
 			const value = rawdata[i];
@@ -2435,14 +2524,10 @@ lve.root.fn.copyObject = (rawdata) => {
 			) {
 				data[i] = lve.root.fn.copyObject(value);
 			}
-			else {
-				data[i] = value;
-			}
+			else data[i] = value;
 		}
 	}
-	else {
-		data = rawdata;
-	}
+	else data = rawdata;
 	return data;
 };
 
@@ -2562,14 +2647,12 @@ lve.root.fn.getRelativePosition = (tarObj, direction) => {
 
 lve.root.fn.eventfilter = (e) => {
 	const
-		vars = lve.root.vars,
-		cache = lve.root.cache,
+		vars = lve.root.vars, cache = lve.root.cache,
 		initSetting = vars.initSetting,
 		usingCamera = vars.usingCamera || {},
 		canvas_elem = initSetting.canvas.element,
 		canvasEventKeyword = cache.canvasEventKeyword,
-		ox = e.offsetX,
-		oy = e.offsetY;
+		ox = e.offsetX, oy = e.offsetY;
 	let
 		arr_targetlst = canvasEventKeyword[e.type].concat(),
 		arr_targetlst_len = arr_targetlst.length;
@@ -2589,6 +2672,7 @@ lve.root.fn.eventfilter = (e) => {
 	}
 
 	for (let i = 0; i < arr_targetlst_len; i++) {
+
 		const
 			item = arr_targetlst[i],
 			style = item.style,
@@ -2744,7 +2828,7 @@ lve.root.fn.getTextWidth = (_obj) => {
 		lineHeight = _obj.style.lineHeight - 0;
 	}
 
-	_obj.style.height = breakPointArr.length * lineHeight;
+	_obj.style.height = (breakPointArr.length - 1) * lineHeight;
 	_obj.__system__.textWidth = maxiumTextWidth;
 	_obj.__system__.textBreakPointArr = breakPointArr;
 
@@ -2990,8 +3074,10 @@ lve.root.fn.text = (_ctx, _type, _that) => {
 lve.init = (rawdata) => {
 
 	if (document.readyState !== 'complete') {
-		window.addEventListener('load', () => { lve.init(rawdata) });
-		return;
+		document.addEventListener('readystatechange', function () {
+			if (document.readyState !== 'loading') lve.init(rawdata);
+		});
+		return lve;
 	}
 
 	// 전역 설정
@@ -3045,113 +3131,127 @@ lve.init = (rawdata) => {
 			lve.root.cache.loseTime = performance.now();
 			lve.root.vars.isStart = true;
 			lve.root.fn.update();
+			lve.root.fn.ready();
 		}, 1);
 	}
-	return true;
+	return lve;
+};
+
+// >= 2.6.2
+lve.ready = (callback) => {
+	if (typeof callback !== 'function') return lve;
+	if (lve.root.vars.isStart) callback();
+	else lve.root.cache.readyCallbacks.push(callback);
+	return lve;
 };
 
 lve.pause = () => {
-	if (lve.root.vars.isRunning) {
-		lve.root.cache.pauseTime = performance.now();
-		lve.root.vars.isRunning = false;
-		for (let item of lve.root.vars.objects) {
-			const playlistArr = ['video', 'sprite'];
 
-			if (playlistArr.indexOf(item.type) == -1) continue;
-			switch (item.type) {
-				case 'video': {
-					// 객체가 재생 중이었을 경우
-					if (!item.element.paused && !item.element.ended) {
-						item.element.pause();
-						item.element.dataset.played = 'true';
-					}
-					break;
+	if (!lve.root.vars.isRunning) return lve;
+
+	lve.root.cache.pauseTime = performance.now();
+	lve.root.vars.isRunning = false;
+
+	for (let item of lve.root.vars.objects) {
+		const playlistArr = ['video', 'sprite'];
+
+		if (playlistArr.indexOf(item.type) == -1) continue;
+		switch (item.type) {
+			case 'video': {
+				// 객체가 재생 중이었을 경우
+				if (!item.element.paused && !item.element.ended) {
+					item.element.pause();
+					item.element.dataset.played = 'true';
 				}
-				case 'sprite': {
-					if (item.__system__.sprite_init.playing) {
-						item.__system__.sprite_init.playing = false;
-						item.element.dataset.played = 'true';
-					}
-					break;
+				break;
+			}
+			case 'sprite': {
+				if (item.__system__.sprite_init.playing) {
+					item.__system__.sprite_init.playing = false;
+					item.element.dataset.played = 'true';
 				}
+				break;
 			}
 		}
 	}
+
+	return lve;
 };
 
 lve.play = () => {
-	if (!lve.root.vars.isRunning) {
-		lve.root.cache.loseTime += (performance.now() - lve.root.cache.pauseTime);
-		lve.root.vars.isRunning = true;
-		lve.root.fn.update();
 
-		for (let item of lve.root.vars.objects) {
-			const playlistArr = ['video', 'sprite'];
+	if (lve.root.vars.isRunning) return lve;
 
-			if (playlistArr.indexOf(item.type) == -1) continue;
-			if (item.element.dataset.played !== 'true') continue;
+	lve.root.cache.loseTime += (performance.now() - lve.root.cache.pauseTime);
+	lve.root.vars.isRunning = true;
+	lve.root.fn.update();
 
-			// 재생 중이던 객체였다면 재생
-			switch (item.type) {
-				case 'video': {
-					item.element.play();
-					delete item.element.dataset.played;
-					break;
-				}
-				case 'sprite': {
-					item.__system__.sprite_init.playing = 'true';
-					delete item.element.dataset.played;
-					break;
-				}
+	for (let item of lve.root.vars.objects) {
+		const playlistArr = ['video', 'sprite'];
+
+		if (playlistArr.indexOf(item.type) == -1) continue;
+		if (item.element.dataset.played !== 'true') continue;
+
+		// 재생 중이던 객체였다면 재생
+		switch (item.type) {
+			case 'video': {
+				item.element.play();
+				delete item.element.dataset.played;
+				break;
+			}
+			case 'sprite': {
+				item.__system__.sprite_init.playing = 'true';
+				delete item.element.dataset.played;
+				break;
 			}
 		}
 	}
+
+	return lve;
 };
 
 lve.fullScreen = (extend) => {
+
 	// 캔버스 이벤트 등록
 	const
 		canvas_elem = lve.root.vars.initSetting.canvas.element,
-		// 증가 비율이 짧은 면을 기준으로 잡음
 		screenScale = [
 			window.screen.width / canvas_elem.width,
 			window.screen.height / canvas_elem.height
-		].sort((a, b) => {
-			return a - b;
-		})[0],
-		// 이벤트 함수
-		fn_eventExit = () => {
-			let isFullScreen = canvas_elem.getAttribute('data-fullscreen');
-			// 현재 전체화면 모드라면
-			if (isFullScreen) {
-				canvas_elem.removeAttribute('data-fullscreen');
+		].sort((a, b) => { return a - b })[0];
 
-				if (extend) {
-					canvas_elem.style.transform = '';
-				}
-				canvas_elem.removeEventListener('fullscreenchange', fn_eventExit);
-				canvas_elem.removeEventListener('webkitfullscreenchange', fn_eventExit);
-				canvas_elem.removeEventListener('mozscreenchange', fn_eventExit);
-				canvas_elem.removeEventListener('msscreenchange', fn_eventExit);
+	// 이벤트 함수
+	function attachEvent() {
+		const isFullScreen = canvas_elem.getAttribute('data-fullscreen');
+		// 현재 전체화면 모드라면
+		if (isFullScreen) {
+			canvas_elem.removeAttribute('data-fullscreen');
+			if (extend) {
+				canvas_elem.style.transform = '';
 			}
-			// 진입 시
-			else {
-				canvas_elem.setAttribute('data-fullscreen', true);
-				// 확장을 허용했을 시
-				if (extend) {
-					canvas_elem.style.transform = 'scale(' + screenScale + ')';
-				}
+			canvas_elem.removeEventListener('fullscreenchange', attachEvent);
+			canvas_elem.removeEventListener('webkitfullscreenchange', attachEvent);
+			canvas_elem.removeEventListener('mozscreenchange', attachEvent);
+			canvas_elem.removeEventListener('msscreenchange', attachEvent);
+		}
+		// 진입 시
+		else {
+			canvas_elem.setAttribute('data-fullscreen', true);
+			// 확장을 허용했을 시
+			if (extend) {
+				canvas_elem.style.transform = 'scale(' + screenScale + ')';
 			}
-		};
+		}
+	}
 
 	if (!canvas_elem || canvas_elem.getAttribute('data-fullscreen') == 'true') {
-		return;
+		return lve;
 	}
-	// 이벤트 등록
-	canvas_elem.addEventListener('fullscreenchange', fn_eventExit);
-	canvas_elem.addEventListener('webkitfullscreenchange', fn_eventExit);
-	canvas_elem.addEventListener('mozscreenchange', fn_eventExit);
-	canvas_elem.addEventListener('msscreenchange', fn_eventExit);
+
+	canvas_elem.addEventListener('fullscreenchange', attachEvent);
+	canvas_elem.addEventListener('webkitfullscreenchange', attachEvent);
+	canvas_elem.addEventListener('mozscreenchange', attachEvent);
+	canvas_elem.addEventListener('msscreenchange', attachEvent);
 
 	try {
 		canvas_elem.requestFullScreen();
@@ -3166,11 +3266,13 @@ lve.fullScreen = (extend) => {
 					canvas_elem.msRequestFullScreen();
 				} catch (e) {
 					throw new Error('브라우저가 전체화면 기능을 지원하지 않습니다');
-					return;
+					return lve;
 				}
 			}
 		}
 	}
+
+	return lve;
 };
 
 lve.data = (rawdata) => {
@@ -3286,6 +3388,7 @@ lve.calc = (_perspective, rawdata = {}) => {
 // >= 2.3.0
 lve.extend = (_method, _fn) => {
 	lve.root.const.ObjectSession.prototype[_method] = _fn;
+	return lve;
 };
 
 // > 2.6.0
@@ -3295,7 +3398,7 @@ lve.on = (e, fn) => {
 	if (e === undefined) {
 		throw new Error(`이벤트리스너가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
 		console.trace(this);
-		return;
+		return lve;
 	}
 
 	if (!fn) return;
@@ -3314,7 +3417,7 @@ lve.on = (e, fn) => {
 			eventRoomObj[event].push(fn);
 		}
 		// 캔버스 이벤트가 아닐 경우
-		if (!eventCanvasRoomObj[event]) return;
+		if (!eventCanvasRoomObj[event]) return lve;
 		// canvasEventKeyword에 객체가 등록되어 있지 않을 경우
 		if (eventCanvasRoomObj[event].indexOf(item) == -1) {
 			eventCanvasRoomObj[event].push(item);
@@ -3323,6 +3426,8 @@ lve.on = (e, fn) => {
 			});
 		}
 	}
+
+	return lve;
 };
 
 // >= 2.6.0
@@ -3332,7 +3437,7 @@ lve.off = (e, fn) => {
 	if (e === undefined) {
 		throw new Error(`이벤트가 없습니다. 다음 중 한 가지를 필수로 선택해주세요. (${events.join(', ')})`);
 		console.trace(this);
-		return;
+		return lve;
 	}
 
 	e = e.toLowerCase().split(' ');
@@ -3340,23 +3445,21 @@ lve.off = (e, fn) => {
 		const eventRoomObj = lve.root.cache.globalEventKeyword;
 		if (fn) {
 			const index = eventRoomObj[event].indexOf(fn);
-			if (index === -1) return;
+			if (index === -1) return lve;
 			eventRoomObj[event].splice(index, 1);
 		}
 		else {
 			eventRoomObj[event] = undefined;
 		}
 	}
+
+	return lve;
 };
 
-/*  밀봉 - 객체에 새로운 속성을 추가/제거할 순 없으나, 기존 속성의 값을 수정할 수 있음
- *  동결 - 객체에 새로운 속성의 추가/제거/수정할 수 없음. 불변화 (상수화)
- *
- *  시스템 변수를 보호하여 사용자가 조작할 수 없도록 설정
- */
-Object.seal(lve); // 밀봉
-Object.seal(lve.root); // 밀봉
-Object.seal(lve.root.vars); // 밀봉
-Object.seal(lve.root.cache); // 밀봉
-Object.freeze(lve.root.const); // 동결
-Object.freeze(lve.root.fn); // 동결
+// lve.version
+// >= 2.7.0
+Object.defineProperty(lve, 'version', {
+	get: function () {
+		return lve.data().version;
+	}
+});

@@ -64,21 +64,19 @@
 		}
 
 		function tag(name) {
-			let obj = lve(name),
-				obj_width = obj.css("width")[0];
-			lve("text_" + name).create({
-				type: "text",
+			const
+				obj = lve(name),
+				height = obj.css("height")[0];
+
+			lve('text_' + name).create({
+				type: 'text',
 				text: name
 			}).css({
-				fontSize: function (self) {
-					return self.css('height')[0];
-				},
-				color: "white",
-				position: 'fixed'
-			}).follow(name, {
-				bottom: function (self) {
-					return self.css('height')[0] * 2
-				},
+				fontSize: height / 5,
+				color: 'white',
+				position: 'absolute'
+			}).follow(obj, {
+				bottom: height,
 				perspective: -1
 			});
 		}
