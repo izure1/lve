@@ -2367,7 +2367,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		}
 	}
 	// 해당 씬의 모든 객체 순회
-	let i = cache.objectArr;
+	let i = cache.objectArr.length;
 	while (i--){
 		const
 			item = cache.objectArr[i],
