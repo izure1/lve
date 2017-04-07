@@ -128,7 +128,7 @@ lve.root.cache = {
 	primary: 1
 };
 lve.root.const = {
-	version: '2.7.1',
+	version: '2.7.2',
 	radian: Math.PI / 180,
 	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
 	arr_event: ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat', 'use'], // 사용할 수 객체 이벤트입니다
@@ -2310,7 +2310,6 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		};
 
 		cache.objectArr = [];
-
 		for (let item of objects) {
 			let sceneCapture = cameraSceneArr[0];
 			for (let j = 0, len_j = cameraSceneArr.length; j < len_j; j++) {
@@ -2368,8 +2367,10 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		}
 	}
 	// 해당 씬의 모든 객체 순회
-	for (let item of cache.objectArr) {
+	let i = cache.objectArr;
+	while (i--){
 		const
+			item = cache.objectArr[i],
 			item_timescale = item.timescale * delayscale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
 			item_ani_countMax = item.__system__.ani_init.count_max,
@@ -2496,7 +2497,7 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		if (isNeedSort) {
 			cache.isNeedSort = 0;
 			cache.objectArr.sort((a, b) => {
-				return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
+				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
 			});
 		}
 	}
