@@ -128,7 +128,7 @@ lve.root.cache = {
 	primary: 1
 };
 lve.root.const = {
-	version: '2.7.0',
+	version: '2.7.1',
 	radian: Math.PI / 180,
 	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
 	arr_event: ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat', 'use'], // 사용할 수 객체 이벤트입니다
@@ -396,11 +396,11 @@ lve.root.const.ObjectSession = class {
 			fn.initElement(this);
 		};
 		initor.initTextWidth = () => {
-			if (this.type === 'text' && this.style.width === 'auto') {
-				setTimeout(() => {
-					fn.getTextWidth(this);
-				}, 1);
-			}
+			if (this.type !== 'text') return;
+			if (this.style.width !== 'auto') return;
+			setTimeout(() => {
+				fn.getTextWidth(this);
+			}, 0);
 		};
 		initor.insertKeyword = () => {
 			if (cache.selectorKeyword[this.name] === undefined) {
@@ -520,6 +520,14 @@ lve.root.const.ObjectSession = class {
 									{
 										item.text = value;
 										lve.root.fn.getTextWidth(item);
+										break;
+									}
+								case 'timescale':
+									{
+										item.timescale = value;
+										if (item.element instanceof HTMLElement) {
+											item.element.playbackRate = value;
+										}
 										break;
 									}
 								case 'scene':
@@ -686,10 +694,12 @@ lve.root.const.ObjectSession = class {
 	}
 
 	draw() {
+
 		const
 			fn = lve.root.fn, vars = lve.root.vars,
-			initSetting = vars.initSetting,
+			initSetting = vars.initSetting;
 
+		const
 			usingCamera = vars.usingCamera,
 			style = this.style, relative = this.relative,
 			hasGradient = this.__system__.hasGradient;
@@ -719,24 +729,26 @@ lve.root.const.ObjectSession = class {
 				// text-align에 따라 위치 보정
 				if (this.type == 'text') {
 					switch (style.textAlign) {
-						case 'left': {
-							if (style.gradientType === 'linear') {
-								textAlign_fix = this.relative.textWidth / 2;
+						case 'left':
+							{
+								if (style.gradientType === 'linear') {
+									textAlign_fix = this.relative.textWidth / 2;
+								}
+								else {
+									textAlign_fix = -(this.relative.width / 2) + (this.relative.textWidth / 2);
+								}
+								break;
 							}
-							else {
-								textAlign_fix = -(this.relative.width / 2) + (this.relative.textWidth / 2);
+						case 'right':
+							{
+								if (this.style.gradientType === 'linear') {
+									textAlign_fix = -this.relative.textWidth / 2;
+								}
+								else {
+									textAlign_fix = (this.relative.width / 2) - (this.relative.textWidth / 2);
+								}
+								break;
 							}
-							break;
-						}
-						case 'right': {
-							if (this.style.gradientType === 'linear') {
-								textAlign_fix = -this.relative.textWidth / 2;
-							}
-							else {
-								textAlign_fix = (this.relative.width / 2) - (this.relative.textWidth / 2);
-							}
-							break;
-						}
 					}
 				}
 
@@ -785,9 +797,8 @@ lve.root.const.ObjectSession = class {
 				}
 
 				for (let i in style.gradient) {
-					const
-						pos = i / 100,
-						color = style.gradient[i] || 'transparent';
+					const pos = i / 100;
+					const color = style.gradient[i] || 'transparent';
 
 					if (isNaN(pos)) return;
 
@@ -798,54 +809,53 @@ lve.root.const.ObjectSession = class {
 			};
 
 		const disappearanceSight = usingCamera.disappearanceSight || initSetting.disappearanceSight;
-		// 상대적 거리 가져오기
 		relative.perspective = style.perspective - usingCamera.style.perspective;
 
 		if (disappearanceSight) {
 			relative.opacity = style.opacity - (relative.perspective / disappearanceSight);
-		} else {
-			relative.opacity = style.opacity;
 		}
+		else relative.opacity = style.opacity;
 
 		// 1차 사물 그리기 예외 처리
 		this.__system__.drawing = false;
 
 		switch (this.type) {
 			case 'camera': return;
-			case 'image': {
-				if (this.src === undefined) return;
-				if (this.element.complete != true) return;
-				break;
-			}
-			case 'video': {
-				if (this.src === undefined) return;
-				break;
-			}
-			case 'sprite': {
-				if (this.src === undefined) return;
-				if (this.element.complete != true) return;
-				break;
-			}
-			case 'text': {
-				if (this.text === undefined) return;
-				if (this.text === '') return;
-				if (style.fontSize <= 0) return;
-				if (style.width === 'auto') return;
-				if (style.height === 'auto') return;
-				break;
-			}
+			case 'image':
+				{
+					if (this.src === undefined) return;
+					if (this.element.complete != true) return;
+					break;
+				}
+			case 'video':
+				{
+					if (this.src === undefined) return;
+					break;
+				}
+			case 'sprite':
+				{
+					if (this.src === undefined) return;
+					if (this.element.complete != true) return;
+					break;
+				}
+			case 'text':
+				{
+					if (this.text === undefined) return;
+					if (this.text === '') return;
+					if (style.fontSize <= 0) return;
+					if (style.width === 'auto') return;
+					if (style.height === 'auto') return;
+					break;
+				}
 		}
 
-		if (
-			style.positio === 'absolute' && relative.perspective <= 0 ||
-			relative.opacity <= 0 ||
-			this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0 ||
-			style.width <= 0 ||
-			style.height <= 0 ||
-			style.scale <= 0
-		) {
-			return;
-		}
+		// 1차 사물 그리기 예외처리
+		if (style.position === 'absolute' && relative.perspective <= 0) return;
+		if (relative.opacity <= 0) return;
+		if (this.scene != 'anywhere' && usingCamera.scene.indexOf(this.scene) != 0) return;
+		if (style.width <= 0) return;
+		if (style.height <= 0) return;
+		if (style.scale <= 0) return;
 
 		this.__system__.drawing = true;
 
@@ -853,75 +863,75 @@ lve.root.const.ObjectSession = class {
 		const
 			canvas = initSetting.canvas,
 			ctx = canvas.context,
-			canvas_elem = canvas.element,
-			// 설정값 우선순위로 받아오기 (usingCamera -> initSetting)
+			canvas_elem = canvas.element;
+
+		const
 			scaleDistance = usingCamera.scaleDistance || initSetting.scaleDistance,
 			disappearanceSize = usingCamera.disappearanceSize || initSetting.disappearanceSize;
 
-		/* 캔버스 image, text타입
-		 * width가 선언되지 않았을 시 자동으로 받아오기
-		 * 이는 최초 1회만 실행된다
+		/*  캔버스 image, sprite타입
+		 *  width:auto, height:auto 처리
 		 */
 		if (style.width == 'auto' || style.height == 'auto') {
 			switch (this.type) {
-				case 'image': {
-					const
-						element = this.element,
-						widthScale = element.width / element.height,
-						heightScale = element.height / element.width;
+				case 'image':
+					{
+						const element = this.element;
+						const
+							widthScale = element.width / element.height,
+							heightScale = element.height / element.width;
 
-					// 양쪽 변 모두 auto일 경우
-					if (style.width == 'auto' && style.height == 'auto') {
-						style.width = element.width || 1;
-						style.height = element.height || 1;
-						style.width_tmp = 'auto';
-						style.height_tmp = 'auto';
-					}
-					// 한쪽 변만 auto일 시 
-					else {
-						// 가로 사이즈가 auto일 시
-						if (style.width == 'auto') {
-							style.width = style.height * widthScale;
+						// 양쪽 변 모두 auto일 경우
+						if (style.width == 'auto' && style.height == 'auto') {
+							style.width = element.width || 1;
+							style.height = element.height || 1;
 							style.width_tmp = 'auto';
-						}
-						// 세로 사이즈가 auto일 시
-						else {
-							style.height = style.width * heightScale;
 							style.height_tmp = 'auto';
 						}
-					}
-
-					break;
-				}
-				case 'sprite': {
-					const
-						element = this.element,
-						widthScale = element.width / this.__system__.sprite_init.stage / element.height,
-						heightScale = element.height / (element.width / this.__system__.sprite_init.stage);
-
-					// 양쪽 변 모두 auto일 경우
-					if (style.width == 'auto' && style.height == 'auto') {
-						style.width = element.width / this.__system__.sprite_init.stage || 1;
-						style.height = element.height || 1;
-						style.width_tmp = 'auto';
-						style.height_tmp = 'auto';
-					}
-					// 한쪽 변만 auto일 시 
-					else {
-						// 가로 사이즈가 auto일 시
-						if (style.width == 'auto') {
-							style.width = style.height * widthScale;
-							style.width_tmp = 'auto';
-						}
-						// 세로 사이즈가 auto일 시
+						// 한쪽 변만 auto일 시 
 						else {
-							style.height = style.width * heightScale;
+							// 가로 사이즈가 auto일 시
+							if (style.width == 'auto') {
+								style.width = style.height * widthScale;
+								style.width_tmp = 'auto';
+							}
+							// 세로 사이즈가 auto일 시
+							else {
+								style.height = style.width * heightScale;
+								style.height_tmp = 'auto';
+							}
+						}
+						break;
+					}
+				case 'sprite':
+					{
+						const element = this.element;
+						const
+							widthScale = element.width / this.__system__.sprite_init.stage / element.height,
+							heightScale = element.height / (element.width / this.__system__.sprite_init.stage);
+
+						// 양쪽 변 모두 auto일 경우
+						if (style.width == 'auto' && style.height == 'auto') {
+							style.width = element.width / this.__system__.sprite_init.stage || 1;
+							style.height = element.height || 1;
+							style.width_tmp = 'auto';
 							style.height_tmp = 'auto';
 						}
+						// 한쪽 변만 auto일 시 
+						else {
+							// 가로 사이즈가 auto일 시
+							if (style.width == 'auto') {
+								style.width = style.height * widthScale;
+								style.width_tmp = 'auto';
+							}
+							// 세로 사이즈가 auto일 시
+							else {
+								style.height = style.width * heightScale;
+								style.height_tmp = 'auto';
+							}
+						}
+						break;
 					}
-
-					break;
-				}
 			}
 		}
 		// 카메라에서 보일 상대적 위치 생성
@@ -964,23 +974,24 @@ lve.root.const.ObjectSession = class {
 			relative.blur = style.blur;
 			relative.scale = style.scale;
 		}
+
+		this.__system__.drawing = false;
 		// 2차 사물 그리기 예외처리
-		if (
-			relative.width >= canvas_elem.width * 10 || // 캔버스 넓이보다 매우 클 경우
-			relative.height >= canvas_elem.height * 10 || // 캔버스 높이보다 매우 클 경우
-			relative.width <= 0 || //  width가 0보다 작을 때
-			relative.height <= 0 || // height가 0보다 작을 때
-			relative.width < disappearanceSize || // width가 소멸크기보다 작음
-			relative.height < disappearanceSize || // height가 소멸크기보다 작음
-			disappearanceSight !== undefined && relative.perspective > disappearanceSight // 소멸거리 지정 시 소멸거리보다 멀리있음
-		) {
-			this.__system__.drawing = false;
-			return;
-		}
+		if (relative.width >= canvas_elem.width * 10) return; // 캔버스 넓이보다 매우 클 경우
+		if (relative.height >= canvas_elem.height * 10) return; // 캔버스 높이보다 매우 클 경우
+		if (relative.width <= 0) return; // width가 0보다 작을 때
+		if (relative.height <= 0) return; // height가 0보다 작을 때
+		if (relative.width < disappearanceSize) return; // width가 소멸크기보다 작음
+		if (relative.height < disappearanceSize) return; // height가 소멸크기보다 작음
+		if (disappearanceSight !== undefined && relative.perspective > disappearanceSight) return; // 소멸거리 지정 시 소멸거리보다 멀리있음
+
+		this.__system__.drawing = true;
+
+		// TODO : 
 		// 현재 객체에 회전 예상 정보 담기
 		//lve.root.fn.isRotateVisible(this);
-		// 3차 사물 그리기 예외처리
-		if (
+		// 3차 사물 그리기 예외처리 (임시 중단)
+		/* if (
 			relative.origin.left + relative.width + relative.width_tmp < 0 || // 화면 왼쪽으로 빠져나감
 			relative.origin.left - relative.width - relative.width_tmp > canvas_elem.width || // 화면 오른쪽으로 빠져나감
 			relative.origin.bottom + relative.height < 0 || // 화면 아래로 빠져나감
@@ -988,154 +999,159 @@ lve.root.const.ObjectSession = class {
 		) {
 			this.__system__.drawing = false;
 			return;
-		}
+		} */
 		// 객체 자체의 회전 정보 받아오기
 		//lve.root.fn.setRotateObject(this);
 		// 캔버시 지우기 및 그림 작업 (필터, 트랜스레이트)
 		lve.root.fn.canvasReset(this);
 
-		this.__system__.drawing = true;
 		switch (this.type) {
-			case 'image': {
-				const imageObj = this.element;
+			case 'image':
+				{
+					const imageObj = this.element;
 
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
-				}
-				if (style.borderWidth) {
-					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					ctx.stroke();
-				}
-				ctx.beginPath();
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+					if (style.borderWidth) {
+						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						ctx.stroke();
+					}
+					ctx.beginPath();
 
-				try {
+					try {
+						ctx.fill();
+						ctx.drawImage(imageObj, relative.left, relative.bottom, relative.width, relative.height);
+					} catch (e) { };
+					break;
+				}
+			case 'circle':
+				{
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+					if (style.borderWidth) {
+						ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2 + relative.borderWidth / 2), (relative.height / 2 + relative.borderWidth / 2), 0, 0, (Math.PI * 2));
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						ctx.stroke();
+					}
+					const fillColor = hasGradient ? getGradient() : style.color;
+
+					ctx.beginPath();
+					ctx.fillStyle = fillColor;
+					ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2), (relative.height / 2), 0, 0, (Math.PI * 2));
 					ctx.fill();
-					ctx.drawImage(imageObj, relative.left, relative.bottom, relative.width, relative.height);
-				} catch (e) { };
-				break;
-			}
-			case 'circle': {
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
+					break;
 				}
-				if (style.borderWidth) {
-					ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2 + relative.borderWidth / 2), (relative.height / 2 + relative.borderWidth / 2), 0, 0, (Math.PI * 2));
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					ctx.stroke();
-				}
-				const fillColor = hasGradient ? getGradient() : style.color;
+			case 'square':
+				{
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+					if (style.borderWidth) {
+						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						ctx.stroke();
+					}
+					const fillColor = hasGradient ? getGradient(this) : style.color;
 
-				ctx.beginPath();
-				ctx.fillStyle = fillColor;
-				ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2), (relative.height / 2), 0, 0, (Math.PI * 2));
-				ctx.fill();
-				break;
-			}
-			case 'square': {
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
-				}
-				if (style.borderWidth) {
-					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					ctx.stroke();
-				}
-				const fillColor = hasGradient ? getGradient(this) : style.color;
-
-				ctx.beginPath();
-				ctx.fillStyle = fillColor;
-				ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
-				ctx.fill();
-				break;
-			}
-			case 'text': {
-				delete relative.width_tmp;
-
-				const fillColor = hasGradient ? getGradient(this) : style.color;
-				let left;
-
-				ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + relative.fontSize + 'px ' + style.fontFamily;
-				ctx.fillStyle = fillColor;
-				ctx.textAlign = style.position == 'absolute' ? 'left' : style.textAlign;
-
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
-				}
-
-				if (style.borderWidth) {
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					fn.text(ctx, 'strokeText', this);
-				}
-				fn.text(ctx, 'fillText', this);
-				break;
-			}
-			case 'video': {
-				const videoObj = this.element;
-
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
-				}
-				if (style.borderWidth) {
-					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					ctx.stroke();
-				}
-				ctx.beginPath();
-				ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
-
-				try {
+					ctx.beginPath();
+					ctx.fillStyle = fillColor;
+					ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
 					ctx.fill();
-					ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
-				} catch (e) { };
-				break;
-			}
-			case 'sprite': {
-				const
-					imageObj = this.element,
-					current = this.__system__.sprite_init.current,
-					gap = imageObj.width / this.__system__.sprite_init.stage;
-
-				if (style.shadowColor) {
-					ctx.shadowColor = style.shadowColor;
-					ctx.shadowBlur = relative.shadowBlur;
-					ctx.shadowOffsetX = relative.shadowOffsetX;
-					ctx.shadowOffsetY = relative.shadowOffsetY;
+					break;
 				}
-				if (style.borderWidth) {
-					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-					ctx.strokeStyle = style.borderColor;
-					ctx.lineWidth = relative.borderWidth;
-					ctx.stroke();
-				}
-				ctx.beginPath();
+			case 'text':
+				{
+					delete relative.width_tmp;
 
-				try {
-					ctx.fill();
-					ctx.drawImage(imageObj, current * gap, 0, gap, imageObj.height, relative.left, relative.bottom, relative.width, relative.height);
-				} catch (e) { };
-				break;
-			}
+					const fillColor = hasGradient ? getGradient(this) : style.color;
+					let left;
+
+					ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + relative.fontSize + 'px ' + style.fontFamily;
+					ctx.fillStyle = fillColor;
+					ctx.textAlign = style.position == 'absolute' ? 'left' : style.textAlign;
+
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+
+					if (style.borderWidth) {
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						fn.text(ctx, 'strokeText', this);
+					}
+					fn.text(ctx, 'fillText', this);
+					break;
+				}
+			case 'video':
+				{
+					const videoObj = this.element;
+
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+					if (style.borderWidth) {
+						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						ctx.stroke();
+					}
+					ctx.beginPath();
+					ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
+
+					try {
+						ctx.fill();
+						ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
+					} catch (e) { };
+					break;
+				}
+			case 'sprite':
+				{
+					const
+						imageObj = this.element,
+						current = this.__system__.sprite_init.current,
+						gap = imageObj.width / this.__system__.sprite_init.stage;
+
+					if (style.shadowColor) {
+						ctx.shadowColor = style.shadowColor;
+						ctx.shadowBlur = relative.shadowBlur;
+						ctx.shadowOffsetX = relative.shadowOffsetX;
+						ctx.shadowOffsetY = relative.shadowOffsetY;
+					}
+					if (style.borderWidth) {
+						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+						ctx.strokeStyle = style.borderColor;
+						ctx.lineWidth = relative.borderWidth;
+						ctx.stroke();
+					}
+					ctx.beginPath();
+
+					try {
+						ctx.fill();
+						ctx.drawImage(imageObj, current * gap, 0, gap, imageObj.height, relative.left, relative.bottom, relative.width, relative.height);
+					} catch (e) { };
+					break;
+				}
 		}
 	}
 
@@ -1918,8 +1934,8 @@ lve.root.const.ObjectSession = class {
 					originalEvent: detail
 				};
 
-				for (let k of globalEventArr) k(eventInfoObj);
-				for (let k of itemEventsArr) k(eventInfoObj);
+				for (let fn of globalEventArr) fn(eventInfoObj);
+				for (let fn of itemEventsArr) fn(eventInfoObj);
 			}
 		};
 
@@ -2105,7 +2121,8 @@ lve.root.const.ObjectSession = class {
 		}
 		if (!tarObj) return;
 
-		for (let item of tarObj) {
+		for (let i = 0, len_i = tarObj.length; i < len_i; i++) {
+			const item = tarObj[i];
 			const newObj = lve(this.name).create({ type: item.type });
 			const
 				oldObj_deepcopy = lve.root.fn.copyObject(item),
@@ -2288,14 +2305,14 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 
 		try {
 			cameraSceneArr = usingCamera.scene.split('::');
-		} catch (e) { };
+		} catch (e) {
+			cameraSceneArr = [];
+		};
 
 		cache.objectArr = [];
 
 		for (let item of objects) {
-
 			let sceneCapture = cameraSceneArr[0];
-
 			for (let j = 0, len_j = cameraSceneArr.length; j < len_j; j++) {
 
 				if (
@@ -2316,12 +2333,9 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		}
 
 		for (let tarObj of allObjectArr) {
-			if (
-				tarObj.scene === 'anywhere' &&
-				cache.objectArr.indexOf(tarObj) == -1
-			) {
-				cache.objectArr.push(tarObj);
-			}
+			if (tarObj.scene !== 'anywhere') continue;
+			if (cache.objectArr.indexOf(tarObj) !== -1) continue;
+			cache.objectArr.push(tarObj);
 		}
 
 		cache.isNeedCaching = 0;
@@ -2354,26 +2368,25 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 		}
 	}
 	// 해당 씬의 모든 객체 순회
-	let i = cache.objectArr.length;
-	while (i--) {
-		let
-			item = cache.objectArr[i], // 해당 객체
+	for (let item of cache.objectArr) {
+		const
 			item_timescale = item.timescale * delayscale,
 			item_ani_callbacks = item.__system__.ani_init.callbacks,
-			item_ani_callbacks_len = item_ani_callbacks.length,
 			item_ani_countMax = item.__system__.ani_init.count_max,
-			attr_translateend = 0, // 해당 객체의 animated된 속성 갯수를 저장할 변수
 			attr_length = item.__system__.ani_init.count_length;
 
+		let
+			item_ani_callbacks_len = item_ani_callbacks.length,
+			attr_translateend = 0; // 해당 객체의 animated된 속성 갯수를 저장할 변수
+
 		// 사물 그려넣기
-		if (isDrawFrame) {
-			item.draw();
-		}
+		if (isDrawFrame) item.draw();
+
 		// 스프라이트 이미지
 		if (item.type == 'sprite') {
-			const
-				sprite_init = item.__system__.sprite_init,
-				sprite_interval = 1000 / sprite_init.fps;
+
+			const sprite_init = item.__system__.sprite_init;
+			const sprite_interval = 1000 / (sprite_init.fps * item.timescale);
 
 			if (sprite_init.playing && sprite_interval < timestamp - sprite_init.timestamp) {
 				sprite_init.timestamp = timestamp;
@@ -2393,21 +2406,23 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 				}
 			}
 		}
+
 		// 해당 객체가 animating이 아닐 시 제외
 		if (!item_ani_countMax && item_ani_callbacks_len === 0) continue;
-		// 해당 객체가 animating일 경우
-		// j를 객체 속성으로 잡음
-		for (let j in item.__system__.ani_init) {
-			// 해당 속성이 animating, number형이 아닐 시 예외
-			if (item.__system__.ani_init[j] === undefined) continue;
-			if (typeof item.__system__.ani_init[j] != 'number') continue;
-			let
+
+		let item_ani;
+		for (let j in item_ani = item.__system__.ani_init) {
+
+			// 해당 속성이 number형이 아닐 시 예외
+			if (typeof item_ani[j] != 'number') continue;
+
+			const
 				item_style = item.style,
-				item_ani = item.__system__.ani_init,
 				item_ani_tar = item_ani[j],
 				item_ani_origin = item_ani.origin,
 				item_ani_count = item_ani.count,
 				item_ani_countMax_item = item_ani.count_max[j];
+
 			// 해당 속성에 animate값 저장
 			if (
 				item_ani_tar != item_ani_origin[j] &&
@@ -2475,26 +2490,19 @@ lve.root.fn.update = (timestamp = lve.root.cache.loseTime) => {
 			ctx.font = '15px consolas';
 			ctx.fillText('There is no using camera', ctx_width_half, ctx_height_half + 15, ctx_width);
 		}
-		// 사용자가 초기설정시 extendDrawEnd 옵션을 사용했을 시
-		if (!!userExtendDrawEnd) {
-			userExtendDrawEnd(lve.root);
-		}
-		// z값이 변경되었을 시 재정렬
+
+		if (userExtendDrawEnd) userExtendDrawEnd(lve.root);
+
 		if (isNeedSort) {
 			cache.isNeedSort = 0;
 			cache.objectArr.sort((a, b) => {
-				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
+				return parseFloat(b.style.perspective) - parseFloat(a.style.perspective);
 			});
 		}
 	}
-	// 사용자가 초기설정시 extendEnd 옵션을 사용했을 시
-	if (!!userExtendEnd) {
-		userExtendEnd(lve.root);
-	}
-	// update 재귀호출
-	if (vars.isRunning) {
-		window.requestAnimationFrame(lve.root.fn.update);
-	}
+
+	if (userExtendEnd) userExtendEnd(lve.root);
+	if (vars.isRunning) window.requestAnimationFrame(lve.root.fn.update);
 };
 
 lve.root.fn.ready = () => {
@@ -2914,18 +2922,22 @@ lve.root.fn.canvasReset = (_item = { style: {}, relative: {} }) => {
 lve.root.fn.initElement = (that, _onload) => {
 	switch (that.type) {
 		case 'image':
-		case 'sprite': {
-			that.element = document.createElement('img');
-			break;
-		}
-		case 'video': {
-			that.element = document.createElement('video');
-			break;
-		}
-		default: {
-			that.element = {};
-			return;
-		}
+		case 'sprite':
+			{
+				that.element = document.createElement('img');
+				break;
+			}
+		case 'video':
+			{
+				that.element = document.createElement('video');
+				that.element.playbackRate = that.timescale;
+				break;
+			}
+		default:
+			{
+				that.element = {};
+				return;
+			}
 	}
 	// attach events
 	switch (that.type) {
@@ -3006,17 +3018,11 @@ lve.root.fn.text = (_ctx, _type, _that) => {
 		y = relative.bottom + relative.height,
 		lineHeight;
 
-	if (
-		isNaN(relative.lineHeight - 0) === true
-	) {
-		if (relative.lineHeight.substr(-1) != '%') {
-			return;
-		}
+	if (isNaN(relative.lineHeight - 0) === true) {
+		if (relative.lineHeight.substr(-1) != '%') return;
 		lineHeight = relative.fontSize * parseFloat(relative.lineHeight) / 100;
 	}
-	else {
-		lineHeight = relative.lineHeight;
-	}
+	else lineHeight = relative.lineHeight;
 
 	let
 		i = breakPointArr.length,
@@ -3048,16 +3054,13 @@ lve.root.fn.text = (_ctx, _type, _that) => {
 					break;
 				}
 			}
-		} else {
-			xx = relative.left;
 		}
+		else xx = relative.left;
 
 		_ctx[_type](rowText, xx, y - (row * lineHeight), relative.width);
 		row++;
 
-		if (startOffset === 0) {
-			break;
-		}
+		if (startOffset === 0) break;
 	}
 };
 
@@ -3073,9 +3076,9 @@ lve.root.fn.text = (_ctx, _type, _that) => {
 
 lve.init = (rawdata) => {
 
-	if (document.readyState !== 'complete') {
+	if (document.readyState === 'loading') {
 		document.addEventListener('readystatechange', function () {
-			if (document.readyState !== 'loading') lve.init(rawdata);
+			lve.init(rawdata);
 		});
 		return lve;
 	}

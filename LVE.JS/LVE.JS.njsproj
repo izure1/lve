@@ -38,11 +38,11 @@
     <TypeScriptCompile Include="typings\index.d.ts" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Sample\Multiple line\Script1.js" />
     <Compile Include="Sample\Performance tester\JavaScript.js" />
     <Compile Include="src\Sample\Window interface\lve.window.js" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Sample\" />
     <Folder Include="Sample\Performance tester\" />
     <Folder Include="src\" />
     <Folder Include="src\Sample\" />
