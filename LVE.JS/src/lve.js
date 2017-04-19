@@ -128,10 +128,16 @@ lve.root.cache = {
 	primary: 1
 };
 lve.root.const = {
-	version: '2.7.2',
-	radian: Math.PI / 180,
-	arr_type: ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'], // 사용할 수 있는 객체 속성들입니다
-	arr_event: ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'repeat', 'use'], // 사용할 수 객체 이벤트입니다
+	get version() { return '2.8.0' },
+	get radian() { return Math.PI / 180 },
+	get arr_type() {
+		// 사용할 수 있는 객체 유형 선언
+		return ['camera', 'image', 'circle', 'square', 'text', 'video', 'sprite'];
+	},
+	get arr_event() {
+		// 사용할 수 객체 이벤트
+		return ['create', 'animatestart', 'animateend', 'animatestop', 'cssmodified', 'attrmodified', 'animateupdate', 'datamodified', 'follow', 'followupdate', 'unfollow', 'followed', 'unfollowed', 'kick', 'kicked', 'play', 'pause', 'ended', 'addclass', 'removeclass', 'toggleclass', 'measuretext', 'click', 'dblclick', 'mousedown', 'mouseup', 'mousemove', 'mouseover', 'mouseout', 'mouseenter', 'mouseleave', 'load', 'error', 'repeat', 'use'];
+	}
 };
 lve.root.fn = {};
 
@@ -144,27 +150,26 @@ lve.root.const.ObjectSession = class {
 		this.context = context || [];
 	}
 
-	getEasingData(_attr) {
+	getEasingData(rawAttr) {
+
 		const ani = this.__system__.ani_init;
+		const
+			tar = ani.origin[rawAttr],
+			tarGoal = ani[rawAttr];
+
 		// animating이 아닌 객체이거나, 속성 매개변수가 넘어오지 않았을 시
-		if (!ani.count_max || !_attr) {
-			return;
-		}
-		let
-			tar = ani.origin[_attr],
-			tar_goal = ani[_attr];
+		if (!ani.count_max || !rawAttr) return;
 		// 존재하지 않는 속성일 경우
-		if (tar === undefined || tar_goal === undefined) {
-			return;
-		}
+		if (tar === undefined || tarGoal === undefined) return;
+
 		// t: current time, b: begInnIng value, c: change In value, d: duration
 		let
-			t = ani.count[_attr] * 1000 / 60 || 1,
+			t = ani.count[rawAttr] * 1000 / 60 || 1,
 			b = tar,
-			c = tar_goal - tar,
-			d = ani.duration[_attr] || 1,
+			c = tarGoal - tar,
+			d = ani.duration[rawAttr] || 1,
 			a = 0, p = 0, s = 0,
-			easing = ani.easing[_attr] || 'linear';
+			easing = ani.easing[rawAttr] || 'linear';
 
 		switch (easing) {
 			case 'linear': {
@@ -398,9 +403,7 @@ lve.root.const.ObjectSession = class {
 		initor.initTextWidth = () => {
 			if (this.type !== 'text') return;
 			if (this.style.width !== 'auto') return;
-			setTimeout(() => {
-				fn.getTextWidth(this);
-			}, 0);
+			document.fonts.ready.then(() => fn.getTextWidth(this));
 		};
 		initor.insertKeyword = () => {
 			if (cache.selectorKeyword[this.name] === undefined) {
@@ -459,7 +462,8 @@ lve.root.const.ObjectSession = class {
 			events: {},
 			drawing: true,
 			hasGradient: false,
-			textWidth: 'auto'
+			textWidth: 'auto',
+			lineCount: 0
 		};
 
 		vars.objects.push(this);
@@ -499,85 +503,75 @@ lve.root.const.ObjectSession = class {
 			}
 
 			switch (typeof data) {
-				case 'object':
-					{
-						for (let attribute in data) {
-							const value = data[attribute];
-							switch (attribute) {
-								case 'type':
-									{
-										item.type = value;
-										lve.root.fn.initElement(item);
-										break;
-									}
-								case 'src':
-									{
-										item.src = value;
-										lve.root.fn.initElement(item);
-										break;
-									}
-								case 'text':
-									{
-										item.text = value;
-										lve.root.fn.getTextWidth(item);
-										break;
-									}
-								case 'timescale':
-									{
-										item.timescale = value;
-										if (item.element instanceof HTMLElement) {
-											item.element.playbackRate = value;
-										}
-										break;
-									}
-								case 'scene':
-									{
-										const usingCamera = lve.root.vars.usingCamera;
-
-										if (item != usingCamera) {
-											if (item.type === 'video'
-												&& value === usingCamera.scene) item.element.muted = true;
-										}
-										else if (item === usingCamera) {
-											const
-												oldVideoArr = lve.root.fn.getSceneObj(item.scene),
-												newVideoArr = lve.root.fn.getSceneObj(value);
-
-											for (let sceneObj of oldVideoArr) {
-												if (sceneObj.type !== 'video') continue;
-												sceneObj.element.muted = true;
-											}
-
-											for (let sceneObj of newVideoArr) {
-												if (sceneObj.type !== 'video') continue;
-												sceneObj.element.muted = false;
-											}
-										}
-										lve.root.cache.isNeedCaching++;
-										break;
-									}
-								default:
-									{
-										item[attribute] = value;
-										break;
-									}
+				case 'object': {
+					for (let attribute in data) {
+						const value = data[attribute];
+						switch (attribute) {
+							case 'type': {
+								item.type = value;
+								lve.root.fn.initElement(item);
+								break;
 							}
+							case 'src': {
+								item.src = value;
+								lve.root.fn.initElement(item);
+								break;
+							}
+							case 'text': {
+								item.text = value;
+								lve.root.fn.getTextWidth(item);
+								break;
+							}
+							case 'timescale': {
+								item.timescale = value;
+								if (item.element instanceof HTMLElement) {
+									item.element.playbackRate = value;
+								}
+								break;
+							}
+							case 'scene': {
+								const usingCamera = lve.root.vars.usingCamera;
 
-							item[attribute] = data[attribute];
-							item.emit('attrmodified');
+								if (item != usingCamera) {
+									if (item.type === 'video'
+										&& value === usingCamera.scene) item.element.muted = true;
+								}
+								else if (item === usingCamera) {
+									const oldVideoArr = lve.root.fn.getSceneObj(item.scene);
+									const newVideoArr = lve.root.fn.getSceneObj(value);
+
+									for (let sceneObj of oldVideoArr) {
+										if (sceneObj.type !== 'video') continue;
+										sceneObj.element.muted = true;
+									}
+
+									for (let sceneObj of newVideoArr) {
+										if (sceneObj.type !== 'video') continue;
+										sceneObj.element.muted = false;
+									}
+								}
+								lve.root.cache.isNeedCaching++;
+								item[attribute] = value;
+								break;
+							}
+							default: {
+								item[attribute] = value;
+								break;
+							}
 						}
-						break;
+
+						item.emit('attrmodified');
 					}
-				case 'string':
-					{
-						retArr.push(item[data]);
-						break;
-					}
-				case 'undefined':
-					{
-						retArr.push(item);
-						break;
-					}
+					break;
+				}
+				case 'string': {
+					retArr.push(item[data]);
+					break;
+				}
+				case 'undefined': {
+					retArr.push(item);
+					break;
+				}
 			}
 		}
 
@@ -620,50 +614,50 @@ lve.root.const.ObjectSession = class {
 					for (let property in data) {
 						const value = data[property];
 						switch (property) {
-							case 'position':
-								{
-									if (data.position !== 'absolute'
-										&& data.position !== 'fixed')
-									{
-										throw new Error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
-										console.trace(item);
-									}
-									break;
+							case 'position': {
+								if (data.position !== 'absolute'
+									&& data.position !== 'fixed') {
+									throw new Error(`position:${data.position}은 사용할 수 없는 속성입니다. 사용할 수 있는 속성은 다음과 같습니다. (absolute, fixed) 기본값은 absolute입니다.`);
+									console.trace(item);
 								}
-							case 'perspective':
-								{
-									if (item.type !== 'camera') lve.root.cache.isNeedSort++;
-									break;
+								item.style[property] = value;
+								break;
+							}
+							case 'perspective': {
+								if (item.type !== 'camera') lve.root.cache.isNeedSort++;
+								item.style[property] = value;
+								break;
+							}
+							case 'width': {
+								item.style[property] = value;
+								if (item.type === 'text') {
+									lve.root.fn.getTextWidth(item);
 								}
-							case 'width':
-								{
-									if (item.type === 'text') {
-										item.style.width = value;
-										lve.root.fn.getTextWidth(item);
-									}
-									break;
+								break;
+							}
+							case 'textAlign': {
+								if (item.style.position === 'absolute'
+									&& item.__system__.textWidth || 0 >= item.style.width) {
+									console.warn('이 객체의 넓이(style.width)가 문자열의 길이보다 짧거나 같습니다. style.textAlign 속성은 정상적으로 변경되었으나, 정렬이 제대로 이루어지지 않은 것처럼 보일 것입니다.');
+									console.trace(item);
 								}
-							case 'textAlign':
-								{
-									if (item.style.position === 'absolute'
-										&& item.__system__.textWidth || 0 >= item.style.width)
-									{
-										console.warn('이 객체의 넓이(style.width)가 문자열의 길이보다 짧거나 같습니다. style.textAlign 속성은 정상적으로 변경되었으나, 정렬이 제대로 이루어지지 않은 것처럼 보일 것입니다.');
-										console.trace(item);
-									}
-									break;
+								item.style[property] = value;
+								break;
+							}
+							case 'gradient': {
+								if (Object.keys(value).length != 0) {
+									item.__system__.hasGradient = true;
 								}
-							case 'gradient':
-								{
-									if (Object.keys(value).length != 0) {
-										item.__system__.hasGradient = true;
-									}
-									else item.__system__.hasGradient = false;
-									break;
-								}
+								else item.__system__.hasGradient = false;
+								item.style[property] = value;
+								break;
+							}
+							default: {
+								item.style[property] = value;
+								break;
+							}
 						}
 
-						item.style[property] = value;
 						item.emit('cssmodified');
 					}
 
@@ -729,26 +723,24 @@ lve.root.const.ObjectSession = class {
 				// text-align에 따라 위치 보정
 				if (this.type == 'text') {
 					switch (style.textAlign) {
-						case 'left':
-							{
-								if (style.gradientType === 'linear') {
-									textAlign_fix = this.relative.textWidth / 2;
-								}
-								else {
-									textAlign_fix = -(this.relative.width / 2) + (this.relative.textWidth / 2);
-								}
-								break;
+						case 'left': {
+							if (style.gradientType === 'linear') {
+								textAlign_fix = this.relative.textWidth / 2;
 							}
-						case 'right':
-							{
-								if (this.style.gradientType === 'linear') {
-									textAlign_fix = -this.relative.textWidth / 2;
-								}
-								else {
-									textAlign_fix = (this.relative.width / 2) - (this.relative.textWidth / 2);
-								}
-								break;
+							else {
+								textAlign_fix = -(this.relative.width / 2) + (this.relative.textWidth / 2);
 							}
+							break;
+						}
+						case 'right': {
+							if (this.style.gradientType === 'linear') {
+								textAlign_fix = -this.relative.textWidth / 2;
+							}
+							else {
+								textAlign_fix = (this.relative.width / 2) - (this.relative.textWidth / 2);
+							}
+							break;
+						}
 					}
 				}
 
@@ -821,32 +813,26 @@ lve.root.const.ObjectSession = class {
 
 		switch (this.type) {
 			case 'camera': return;
-			case 'image':
-				{
-					if (this.src === undefined) return;
-					if (this.element.complete != true) return;
-					break;
-				}
-			case 'video':
-				{
-					if (this.src === undefined) return;
-					break;
-				}
-			case 'sprite':
-				{
-					if (this.src === undefined) return;
-					if (this.element.complete != true) return;
-					break;
-				}
-			case 'text':
-				{
-					if (this.text === undefined) return;
-					if (this.text === '') return;
-					if (style.fontSize <= 0) return;
-					if (style.width === 'auto') return;
-					if (style.height === 'auto') return;
-					break;
-				}
+			case 'image': {
+				if (this.src === undefined) return;
+				if (this.element.complete != true) return;
+				break;
+			}
+			case 'video': {
+				if (this.src === undefined) return;
+				break;
+			}
+			case 'sprite': {
+				if (this.src === undefined) return;
+				if (this.element.complete != true) return;
+				break;
+			}
+			case 'text': {
+				if (this.text === undefined) return;
+				if (this.text === '') return;
+				if (style.fontSize <= 0) return;
+				break;
+			}
 		}
 
 		// 1차 사물 그리기 예외처리
@@ -869,69 +855,78 @@ lve.root.const.ObjectSession = class {
 			scaleDistance = usingCamera.scaleDistance || initSetting.scaleDistance,
 			disappearanceSize = usingCamera.disappearanceSize || initSetting.disappearanceSize;
 
-		/*  캔버스 image, sprite타입
+		/*  캔버스 image, sprite, text타입
 		 *  width:auto, height:auto 처리
 		 */
 		if (style.width == 'auto' || style.height == 'auto') {
 			switch (this.type) {
-				case 'image':
-					{
-						const element = this.element;
-						const
-							widthScale = element.width / element.height,
-							heightScale = element.height / element.width;
+				case 'image': {
+					const element = this.element;
+					const
+						widthScale = element.width / element.height,
+						heightScale = element.height / element.width;
 
-						// 양쪽 변 모두 auto일 경우
-						if (style.width == 'auto' && style.height == 'auto') {
-							style.width = element.width || 1;
-							style.height = element.height || 1;
+					// 양쪽 변 모두 auto일 경우
+					if (style.width == 'auto' && style.height == 'auto') {
+						style.width = element.width || 1;
+						style.height = element.height || 1;
+						style.width_tmp = 'auto';
+						style.height_tmp = 'auto';
+					}
+					// 한쪽 변만 auto일 시 
+					else {
+						// 가로 사이즈가 auto일 시
+						if (style.width == 'auto') {
+							style.width = style.height * widthScale;
 							style.width_tmp = 'auto';
+						}
+						// 세로 사이즈가 auto일 시
+						else {
+							style.height = style.width * heightScale;
 							style.height_tmp = 'auto';
 						}
-						// 한쪽 변만 auto일 시 
-						else {
-							// 가로 사이즈가 auto일 시
-							if (style.width == 'auto') {
-								style.width = style.height * widthScale;
-								style.width_tmp = 'auto';
-							}
-							// 세로 사이즈가 auto일 시
-							else {
-								style.height = style.width * heightScale;
-								style.height_tmp = 'auto';
-							}
-						}
-						break;
 					}
-				case 'sprite':
-					{
-						const element = this.element;
-						const
-							widthScale = element.width / this.__system__.sprite_init.stage / element.height,
-							heightScale = element.height / (element.width / this.__system__.sprite_init.stage);
+					break;
+				}
+				case 'sprite': {
+					const element = this.element;
+					const
+						widthScale = element.width / this.__system__.sprite_init.stage / element.height,
+						heightScale = element.height / (element.width / this.__system__.sprite_init.stage);
 
-						// 양쪽 변 모두 auto일 경우
-						if (style.width == 'auto' && style.height == 'auto') {
-							style.width = element.width / this.__system__.sprite_init.stage || 1;
-							style.height = element.height || 1;
+					// 양쪽 변 모두 auto일 경우
+					if (style.width == 'auto' && style.height == 'auto') {
+						style.width = element.width / this.__system__.sprite_init.stage || 1;
+						style.height = element.height || 1;
+						style.width_tmp = 'auto';
+						style.height_tmp = 'auto';
+					}
+					// 한쪽 변만 auto일 시 
+					else {
+						// 가로 사이즈가 auto일 시
+						if (style.width == 'auto') {
+							style.width = style.height * widthScale;
 							style.width_tmp = 'auto';
+						}
+						// 세로 사이즈가 auto일 시
+						else {
+							style.height = style.width * heightScale;
 							style.height_tmp = 'auto';
 						}
-						// 한쪽 변만 auto일 시 
-						else {
-							// 가로 사이즈가 auto일 시
-							if (style.width == 'auto') {
-								style.width = style.height * widthScale;
-								style.width_tmp = 'auto';
-							}
-							// 세로 사이즈가 auto일 시
-							else {
-								style.height = style.width * heightScale;
-								style.height_tmp = 'auto';
-							}
-						}
-						break;
 					}
+					break;
+				}
+				case 'text': {
+					if (style.width == 'auto') {
+						style.width = this.__system__.textWidth;
+						style.width_tmp = 'auto';
+					}
+					if (style.height == 'auto') {
+						style.height = this.__system__.lineCount * style.fontSize;
+						style.height_tmp = 'auto';
+					}
+					break;
+				}
 			}
 		}
 		// 카메라에서 보일 상대적 위치 생성
@@ -976,6 +971,12 @@ lve.root.const.ObjectSession = class {
 		}
 
 		this.__system__.drawing = false;
+
+		if (style.width_tmp) style.width = style.width_tmp;
+		if (style.height_tmp) style.height = style.height_tmp;
+		delete style.width_tmp;
+		delete style.height_tmp;
+
 		// 2차 사물 그리기 예외처리
 		if (relative.width >= canvas_elem.width * 10) return; // 캔버스 넓이보다 매우 클 경우
 		if (relative.height >= canvas_elem.height * 10) return; // 캔버스 높이보다 매우 클 경우
@@ -1006,152 +1007,146 @@ lve.root.const.ObjectSession = class {
 		lve.root.fn.canvasReset(this);
 
 		switch (this.type) {
-			case 'image':
-				{
-					const imageObj = this.element;
+			case 'image': {
+				const imageObj = this.element;
 
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-					if (style.borderWidth) {
-						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						ctx.stroke();
-					}
-					ctx.beginPath();
-
-					try {
-						ctx.fill();
-						ctx.drawImage(imageObj, relative.left, relative.bottom, relative.width, relative.height);
-					} catch (e) { };
-					break;
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
 				}
-			case 'circle':
-				{
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-					if (style.borderWidth) {
-						ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2 + relative.borderWidth / 2), (relative.height / 2 + relative.borderWidth / 2), 0, 0, (Math.PI * 2));
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						ctx.stroke();
-					}
-					const fillColor = hasGradient ? getGradient() : style.color;
+				if (style.borderWidth) {
+					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
+				}
+				ctx.beginPath();
 
-					ctx.beginPath();
-					ctx.fillStyle = fillColor;
-					ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2), (relative.height / 2), 0, 0, (Math.PI * 2));
+				try {
 					ctx.fill();
-					break;
+					ctx.drawImage(imageObj, relative.left, relative.bottom, relative.width, relative.height);
+				} catch (e) { };
+				break;
+			}
+			case 'circle': {
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
 				}
-			case 'square':
-				{
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-					if (style.borderWidth) {
-						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						ctx.stroke();
-					}
-					const fillColor = hasGradient ? getGradient(this) : style.color;
+				if (style.borderWidth) {
+					ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2 + relative.borderWidth / 2), (relative.height / 2 + relative.borderWidth / 2), 0, 0, (Math.PI * 2));
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
+				}
+				const fillColor = hasGradient ? getGradient() : style.color;
 
-					ctx.beginPath();
-					ctx.fillStyle = fillColor;
-					ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
+				ctx.beginPath();
+				ctx.fillStyle = fillColor;
+				ctx.ellipse((relative.left + relative.width / 2), (relative.bottom + relative.width / 2), (relative.width / 2), (relative.height / 2), 0, 0, (Math.PI * 2));
+				ctx.fill();
+				break;
+			}
+			case 'square': {
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
+				}
+				if (style.borderWidth) {
+					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
+				}
+				const fillColor = hasGradient ? getGradient(this) : style.color;
+
+				ctx.beginPath();
+				ctx.fillStyle = fillColor;
+				ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
+				ctx.fill();
+				break;
+			}
+			case 'text': {
+				delete relative.width_tmp;
+
+				const fillColor = hasGradient ? getGradient(this) : style.color;
+				let left;
+
+				ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + relative.fontSize + 'px ' + style.fontFamily;
+				ctx.fillStyle = fillColor;
+				ctx.textAlign = style.position == 'absolute' ? 'left' : style.textAlign;
+
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
+				}
+
+				if (style.borderWidth) {
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					fn.text(ctx, 'strokeText', this);
+				}
+				fn.text(ctx, 'fillText', this);
+				break;
+			}
+			case 'video': {
+				const videoObj = this.element;
+
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
+				}
+				if (style.borderWidth) {
+					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
+				}
+				ctx.beginPath();
+				ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
+
+				try {
 					ctx.fill();
-					break;
+					ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
+				} catch (e) { };
+				break;
+			}
+			case 'sprite': {
+				const
+					imageObj = this.element,
+					current = this.__system__.sprite_init.current,
+					gap = imageObj.width / this.__system__.sprite_init.stage;
+
+				if (style.shadowColor) {
+					ctx.shadowColor = style.shadowColor;
+					ctx.shadowBlur = relative.shadowBlur;
+					ctx.shadowOffsetX = relative.shadowOffsetX;
+					ctx.shadowOffsetY = relative.shadowOffsetY;
 				}
-			case 'text':
-				{
-					delete relative.width_tmp;
-
-					const fillColor = hasGradient ? getGradient(this) : style.color;
-					let left;
-
-					ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + relative.fontSize + 'px ' + style.fontFamily;
-					ctx.fillStyle = fillColor;
-					ctx.textAlign = style.position == 'absolute' ? 'left' : style.textAlign;
-
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-
-					if (style.borderWidth) {
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						fn.text(ctx, 'strokeText', this);
-					}
-					fn.text(ctx, 'fillText', this);
-					break;
+				if (style.borderWidth) {
+					ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
+					ctx.strokeStyle = style.borderColor;
+					ctx.lineWidth = relative.borderWidth;
+					ctx.stroke();
 				}
-			case 'video':
-				{
-					const videoObj = this.element;
+				ctx.beginPath();
 
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-					if (style.borderWidth) {
-						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						ctx.stroke();
-					}
-					ctx.beginPath();
-					ctx.rect(relative.left, relative.bottom, relative.width, relative.height);
-
-					try {
-						ctx.fill();
-						ctx.drawImage(videoObj, relative.left, relative.bottom, relative.width, relative.height);
-					} catch (e) { };
-					break;
-				}
-			case 'sprite':
-				{
-					const
-						imageObj = this.element,
-						current = this.__system__.sprite_init.current,
-						gap = imageObj.width / this.__system__.sprite_init.stage;
-
-					if (style.shadowColor) {
-						ctx.shadowColor = style.shadowColor;
-						ctx.shadowBlur = relative.shadowBlur;
-						ctx.shadowOffsetX = relative.shadowOffsetX;
-						ctx.shadowOffsetY = relative.shadowOffsetY;
-					}
-					if (style.borderWidth) {
-						ctx.rect(relative.left - relative.borderWidth / 2, relative.bottom - relative.borderWidth / 2, relative.width + relative.borderWidth, relative.height + relative.borderWidth);
-						ctx.strokeStyle = style.borderColor;
-						ctx.lineWidth = relative.borderWidth;
-						ctx.stroke();
-					}
-					ctx.beginPath();
-
-					try {
-						ctx.fill();
-						ctx.drawImage(imageObj, current * gap, 0, gap, imageObj.height, relative.left, relative.bottom, relative.width, relative.height);
-					} catch (e) { };
-					break;
-				}
+				try {
+					ctx.fill();
+					ctx.drawImage(imageObj, current * gap, 0, gap, imageObj.height, relative.left, relative.bottom, relative.width, relative.height);
+				} catch (e) { };
+				break;
+			}
 		}
 	}
 
@@ -1960,7 +1955,7 @@ lve.root.const.ObjectSession = class {
 				console.warn('measureText 메서드는 type:text 객체에만 사용할 수 있습니다');
 				return;
 			}
-			item.css({ width: 'auto' });
+			item.style.width = 'auto';
 			lve.root.fn.getTextWidth(item);
 			item.emit('measuretext');
 		};
@@ -2257,6 +2252,85 @@ lve.root.const.ObjectSession = class {
 		// update session
 		this.context = retArr;
 		return this;
+	}
+
+	// >= 2.8.0
+	width() {
+		const retArr = [];
+		const work = (item) => {
+			let rawWidth = null;
+			if (item.style.width !== 'auto') retArr.push(item.style.width);
+			else {
+				switch (item.type) {
+					case 'image': {
+						if (item.style.height === 'auto') rawWidth = item.element.width;
+						else {
+							rawWidth = item.style.height * (item.element.width / item.element.height);
+						}
+						break;
+					}
+					case 'text': {
+						if (item.style.width !== 'auto') rawWidth = item.style.width;
+						else {
+							const ctx = lve.root.vars.initSetting.canvas.context;
+							ctx.font = `${item.style.fontStyle} ${item.style.fontWeight} ${item.style.fontSize} ${item.style.fontFamily}`;
+							rawWidth = ctx.measureText(item.text || '').width;
+						}
+						break;
+					}
+					default: {
+						rawWidth = 'auto';
+						break;
+					}
+				}
+				// return value
+				retArr.push(rawWidth);
+			}
+		};
+
+		if (!this.context) work(this);
+		else {
+			for (let item of this.context) work(item);
+		}
+
+		return retArr;
+	}
+
+	// >= 2.8.0
+	height() {
+		const retArr = [];
+		const work = (item) => {
+			let rawHeight = null;
+			if (item.style.height !== 'auto') retArr.push(item.style.height);
+			else {
+				switch (item.type) {
+					case 'image': {
+						if (item.style.width === 'auto') rawHeight = item.element.height;
+						else {
+							rawHeight = item.style.width * (item.element.height / item.element.width);
+						}
+						break;
+					}
+					case 'text': {
+						rawHeight = item.__system__.lineCount * item.style.fontSize;
+						break;
+					}
+					default: {
+						rawHeight = 'auto';
+						break;
+					}
+				}
+				// return value
+				retArr.push(rawHeight);
+			}
+		};
+
+		if (!this.context) work(this);
+		else {
+			for (let item of this.context) work(item);
+		}
+
+		return retArr;
 	}
 };
 
@@ -2770,53 +2844,46 @@ lve.root.fn.checkCamera = () => {
 };
 
 lve.root.fn.getTextWidth = (_obj) => {
-	const
-		ctx = lve.root.vars.initSetting.canvas.context,
-		style = _obj.style;
+	const ctx = lve.root.vars.initSetting.canvas.context;
+	const style = _obj.style;
 
-	const
-		cars = (_obj.text + '').split('\n'),
-		breakPointArr = [0];
+	if (_obj.type !== 'text') return;
+
+	const cars = (_obj.text + '').split('\n');
+	const breakPointArr = [0];
 
 	let maxiumTextWidth = 0;
-
 	ctx.font = style.fontStyle + ' ' + style.fontWeight + ' ' + style.fontSize + 'px ' + style.fontFamily;
 
-	if (_obj.style.width == 'auto') {
+	if (_obj.style.width === 'auto') {
 		style.width = 0;
-
 		for (let car of cars) {
 
-			const
-				lineTextWidth = ctx.measureText(car).width,
-				lineTextOffset = breakPointArr[breakPointArr.length - 1] + car.length;
+			const lineTextWidth = ctx.measureText(car).width;
+			const lineTextOffset = breakPointArr[breakPointArr.length - 1] + car.length;
 
-			if (_obj.style.width < lineTextWidth) {
-				_obj.style.width = lineTextWidth;
+			if (style.width < lineTextWidth) {
+				style.width = lineTextWidth;
 				maxiumTextWidth = lineTextWidth;
 			}
-
 			breakPointArr.push(lineTextOffset);
 		}
+		style.width = 'auto';
 	}
 	else {
 
 		for (let car of cars) {
-
-			const
-				lineTextWidth = ctx.measureText(car).width,
-				lineTextOffset = breakPointArr[breakPointArr.length - 1] + car.length;
+			const lineTextWidth = ctx.measureText(car).width;
+			const lineTextOffset = breakPointArr[breakPointArr.length - 1] + car.length;
 
 			// 이 줄의 길이가 객체의 너비를 넘어 줄바꿈이 필요함
 			if (_obj.style.width < lineTextWidth) {
 
 				let row_lastOffset = 0;
-
 				for (let j = 0, len_j = car.length; j < len_j; j++) {
 
-					const
-						testText = car.substring(row_lastOffset, j),
-						arr_lastOffset = breakPointArr[breakPointArr.length - 1];
+					const testText = car.substring(row_lastOffset, j);
+					const arr_lastOffset = breakPointArr[breakPointArr.length - 1];
 
 					if (ctx.measureText(testText).width > _obj.style.width) {
 						row_lastOffset = j;
@@ -2824,7 +2891,6 @@ lve.root.fn.getTextWidth = (_obj) => {
 					}
 				}
 			}
-
 			breakPointArr.push(lineTextOffset);
 		}
 	}
@@ -2840,6 +2906,7 @@ lve.root.fn.getTextWidth = (_obj) => {
 	_obj.style.height = (breakPointArr.length - 1) * lineHeight;
 	_obj.__system__.textWidth = maxiumTextWidth;
 	_obj.__system__.textBreakPointArr = breakPointArr;
+	_obj.__system__.lineCount = breakPointArr.length - 1;
 
 	lve.root.cache.isNeedCaching++;
 };
@@ -2923,22 +2990,19 @@ lve.root.fn.canvasReset = (_item = { style: {}, relative: {} }) => {
 lve.root.fn.initElement = (that, _onload) => {
 	switch (that.type) {
 		case 'image':
-		case 'sprite':
-			{
-				that.element = document.createElement('img');
-				break;
-			}
-		case 'video':
-			{
-				that.element = document.createElement('video');
-				that.element.playbackRate = that.timescale;
-				break;
-			}
-		default:
-			{
-				that.element = {};
-				return;
-			}
+		case 'sprite': {
+			that.element = document.createElement('img');
+			break;
+		}
+		case 'video': {
+			that.element = document.createElement('video');
+			that.element.playbackRate = that.timescale;
+			break;
+		}
+		default: {
+			that.element = {};
+			return;
+		}
 	}
 	// attach events
 	switch (that.type) {
@@ -2957,6 +3021,12 @@ lve.root.fn.initElement = (that, _onload) => {
 					_onload(that);
 				}
 			};
+			that.element.onerror = () => {
+				if (typeof _onload == 'function') {
+					that.emit('error');
+					_onload(that);
+				}
+			};
 			break;
 		}
 		case 'sprite': {
@@ -2969,6 +3039,12 @@ lve.root.fn.initElement = (that, _onload) => {
 				}
 				if (typeof _onload == 'function') {
 					that.emit('load');
+					_onload(that);
+				}
+			};
+			that.element.onerror = () => {
+				if (typeof _onload == 'function') {
+					that.emit('error');
 					_onload(that);
 				}
 			};
@@ -2994,6 +3070,12 @@ lve.root.fn.initElement = (that, _onload) => {
 			that.element.onloadeddata = () => {
 				if (typeof _onload == 'function') {
 					that.emit('load');
+					_onload(that);
+				}
+			};
+			that.element.onerror = () => {
+				if (typeof _onload == 'function') {
+					that.emit('error');
 					_onload(that);
 				}
 			};
@@ -3123,20 +3205,18 @@ lve.init = (rawdata) => {
 			fn = lve.root.fn;
 
 		// 캔버스 이벤트 할당
-		ce.onclick =
-			ce.ondblclick =
-			ce.onmousemove =
-			ce.onmousedown =
-			ce.onmouseup = (e) => {
-				fn.eventfilter(e);
-			};
+		ce.addEventListener('click', fn.eventfilter);
+		ce.addEventListener('dblclick', fn.eventfilter);
+		ce.addEventListener('mousemove', fn.eventfilter);
+		ce.addEventListener('mousedown', fn.eventfilter);
+		ce.addEventListener('mouseup', fn.eventfilter);
 
 		setTimeout(() => {
 			lve.root.cache.loseTime = performance.now();
 			lve.root.vars.isStart = true;
 			lve.root.fn.update();
 			lve.root.fn.ready();
-		}, 1);
+		}, 0);
 	}
 	return lve;
 };
@@ -3268,6 +3348,36 @@ lve.fullScreen = (extend) => {
 			} catch (e) {
 				try {
 					canvas_elem.msRequestFullScreen();
+				} catch (e) {
+					throw new Error('브라우저가 전체화면 기능을 지원하지 않습니다');
+					return lve;
+				}
+			}
+		}
+	}
+
+	return lve;
+};
+
+// >= 2.8.0
+lve.exitFullScreen = (extend) => {
+
+	const canvas_elem = lve.root.vars.initSetting.canvas.element;
+	if (!canvas_elem || canvas_elem.getAttribute('data-fullscreen') != 'true') {
+		return lve;
+	}
+
+	try {
+		document.exitFullscreen();
+	} catch (e) {
+		try {
+			document.webkitExitFullscreen();
+		} catch (e) {
+			try {
+				document.mozExitFullscreen();
+			} catch (e) {
+				try {
+					document.msExitFullscreen();
 				} catch (e) {
 					throw new Error('브라우저가 전체화면 기능을 지원하지 않습니다');
 					return lve;

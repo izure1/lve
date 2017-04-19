@@ -9,7 +9,7 @@
 'use strict';
 
 lve.window = {};
-lve.window.version = '1.0.0';
+lve.window.version = '1.0.1';
 lve.window.dialogs = [];
 lve.window.config = {
 	window: {
@@ -244,7 +244,7 @@ lve.window.dialog = function (title, content, option = {}) {
 				if (item.data('__lve.window.button.line__')[0] === line) return true;
 			});
 			const buttonsDivWidth = (function () {
-				const buttonsTotalWidth = sameLineButtons.css('width').reduce((a, b) => a + b, 0);
+				const buttonsTotalWidth = sameLineButtons.width().reduce((a, b) => a + b, 0);
 				return buttonsTotalWidth + ((sameLineButtons.context.length - 1) * buttonMargin);
 			})();
 
@@ -267,17 +267,17 @@ lve.window.dialog = function (title, content, option = {}) {
 				bottom: 10,
 				perspective: -0.000001,
 				left: function () {
-					return button.css('width')[0] / 2
+					return button.width()[0] / 2
 				}
 			});
 
 			button.css({
-				width: (buttontext.css('width')[0] + buttonPadding), height: buttonHeight,
+				width: (buttontext.width()[0] + buttonPadding), height: buttonHeight,
 				color: windowconfig.defaultColor,
 				position: 'fixed'
 			});
 
-			const currentButtonWidth = button.css('width')[0];
+			const currentButtonWidth = button.width()[0];
 			if (isFirstButton) isFirstButton = false;
 			else {
 				buttonsDivWidth += (beforeButtonWidth + buttonMargin);
