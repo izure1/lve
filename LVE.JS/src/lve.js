@@ -76,7 +76,7 @@ var lve = (name) => {
 		}
 	}
 
-	return new lve.root.const.ObjectSession(name, retArr);
+	return new LveJSObjectSession(name, retArr);
 };
 
 
@@ -128,7 +128,7 @@ lve.root.cache = {
 	primary: 1
 };
 lve.root.const = {
-	get version() { return '2.8.0' },
+	get version() { return '2.8.1' },
 	get radian() { return Math.PI / 180 },
 	get arr_type() {
 		// 사용할 수 있는 객체 유형 선언
@@ -141,7 +141,7 @@ lve.root.const = {
 };
 lve.root.fn = {};
 
-lve.root.const.ObjectSession = class {
+class LveJSObjectSession {
 	/* selector = 사용자가 검색하고자 하는 객체의 name (String type)
 	 * context = 검색된 객체 리스트 (Array type)
 	 */
@@ -358,9 +358,7 @@ lve.root.const.ObjectSession = class {
 			throw new Error(`type 속성은 객체 필수 속성입니다. 다음 중 한 가지를 필수로 선택해주세요. (${consts.arr_type.join(', ')})`);
 			return;
 		}
-		else if (
-			consts.arr_type.indexOf(rawdata.type.toLowerCase()) == -1
-		) {
+		else if (consts.arr_type.indexOf(rawdata.type.toLowerCase()) == -1) {
 			throw new Error(`${rawdata.type} 은(는) 존재하지 않는 type 속성입니다. 이용할 수 있는 type 속성은 다음과 같습니다. (${consts.arr_type.join(', ')})`);
 			return;
 		}
@@ -403,7 +401,9 @@ lve.root.const.ObjectSession = class {
 		initor.initTextWidth = () => {
 			if (this.type !== 'text') return;
 			if (this.style.width !== 'auto') return;
-			document.fonts.ready.then(() => fn.getTextWidth(this));
+			try {
+				document.fonts.ready.then(() => fn.getTextWidth(this));
+			} catch (e) { fn.getTextWidth(this) };
 		};
 		initor.insertKeyword = () => {
 			if (cache.selectorKeyword[this.name] === undefined) {
@@ -463,6 +463,7 @@ lve.root.const.ObjectSession = class {
 			drawing: true,
 			hasGradient: false,
 			textWidth: 'auto',
+			textBreakPointArr: [],
 			lineCount: 0
 		};
 
@@ -1263,7 +1264,7 @@ lve.root.const.ObjectSession = class {
 		};
 
 		if (relpos) {
-			if (selectObj instanceof lve.root.const.ObjectSession) {
+			if (lve.instanceof(selectObj)) {
 				tarObj = selectObj.get(0);
 			}
 			else {
@@ -1327,7 +1328,7 @@ lve.root.const.ObjectSession = class {
 	kick(tarObj) {
 
 		let kickTars;
-		if (tarObj instanceof lve.root.const.ObjectSession) {
+		if (lve.instanceof(tarObj)) {
 			kickTars = tarObj.context || [tarObj];
 		}
 		else kickTars = lve.root.cache.selectorKeyword[tarObj] || [];
@@ -2103,7 +2104,7 @@ lve.root.const.ObjectSession = class {
 			retObj = { name: this.name, context: [] };
 
 		if (originObj === undefined) return;
-		if (originObj instanceof lve.root.const.ObjectSession) {
+		if (lve.instanceof(originObj)) {
 			if (originObj.context) {
 				tarObj = originObj.context;
 			}
@@ -2603,7 +2604,7 @@ lve.root.fn.copyObject = (rawdata) => {
 			const value = rawdata[i];
 			if (
 				typeof value == 'object' &&
-				value instanceof lve.root.const.ObjectSession === false
+				lve.instanceof(value) === false
 			) {
 				data[i] = lve.root.fn.copyObject(value);
 			}
@@ -2778,7 +2779,7 @@ lve.root.fn.eventfilter = (e) => {
 			if (i == arr_targetlst_len - 1) {
 				// mousemove 이벤트였으나, cache.mouseoverItem 결과값이 남아있을 경우
 				const beforeMouseoverItem = cache.mouseoverItem;
-				if (e.type == 'mousemove' && beforeMouseoverItem instanceof lve.root.const.ObjectSession) {
+				if (e.type == 'mousemove' && lve.instanceof(beforeMouseoverItem)) {
 					beforeMouseoverItem.emit('mouseout');
 					cache.mouseoverItem = false;
 				}
@@ -2796,7 +2797,7 @@ lve.root.fn.eventfilter = (e) => {
 			// 이전 아이템과 일치하지 않을 경우 갱신하기
 			if (item != beforeMouseoverItem) {
 				// 생성된 객체일 경우
-				if (beforeMouseoverItem instanceof lve.root.const.ObjectSession) {
+				if (lve.instanceof(beforeMouseoverItem)) {
 					beforeMouseoverItem.emit('mouseout');
 				}
 				item.emit('mouseover');
@@ -3294,7 +3295,7 @@ lve.play = () => {
 	return lve;
 };
 
-lve.fullScreen = (extend) => {
+lve.fullScreen = lve.fullscreen = (extend) => {
 
 	// 캔버스 이벤트 등록
 	const
@@ -3360,7 +3361,7 @@ lve.fullScreen = (extend) => {
 };
 
 // >= 2.8.0
-lve.exitFullScreen = (extend) => {
+lve.exitFullScreen = lve.exitFullscreen = (extend) => {
 
 	const canvas_elem = lve.root.vars.initSetting.canvas.element;
 	if (!canvas_elem || canvas_elem.getAttribute('data-fullscreen') != 'true') {
@@ -3501,7 +3502,7 @@ lve.calc = (_perspective, rawdata = {}) => {
 
 // >= 2.3.0
 lve.extend = (_method, _fn) => {
-	lve.root.const.ObjectSession.prototype[_method] = _fn;
+	LveJSObjectSession.prototype[_method] = _fn;
 	return lve;
 };
 
@@ -3577,3 +3578,9 @@ Object.defineProperty(lve, 'version', {
 		return lve.data().version;
 	}
 });
+
+// lve.LveJSObjectSession
+// >= 2.8.1
+lve.instanceof = (item) => {
+	return item instanceof LveJSObjectSession;
+};
