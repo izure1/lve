@@ -9,7 +9,7 @@
 'use strict';
 
 lve.window = {};
-lve.window.version = '1.0.1';
+lve.window.version = '1.0.2';
 lve.window.dialogs = [];
 lve.window.config = {
 	window: {
@@ -26,7 +26,8 @@ lve.window.config = {
 		frameHeight: 50,
 		frameColor: 'black',
 		lineHeight: '120%',
-		contentFontSize: 15
+		fontSize: 15,
+		fontFamily: 'arial, sans-serif'
 	}
 };
 lve.window.cache = {
@@ -70,7 +71,7 @@ lve.window.dialog = function (title, content, option = {}) {
 				if (bodytext.css('height')[0] > height) {
 					const currentContentHeight = bodytext.css('height')[0];
 
-					frame.css({ height: `+=${currentContentHeight}` });
+					frame.css({ height: `+=${currentContentHeight}`, bottom: `-=${currentContentHeight - beforeContentHeight}` });
 					frame.data({ '__lve.window.body.height__': currentContentHeight });
 				}
 				else {
@@ -91,14 +92,14 @@ lve.window.dialog = function (title, content, option = {}) {
 			focus: function () {
 				frame.emit('focus');
 			},
-			title: function (content) {
-				if (typeof content === 'string') {
+			title: function (content = null) {
+				if (content !== null) {
 					titletext.attr({ text: content });
 				}
 				else return titletext.attr('text')[0];
 			},
-			text: function (content) {
-				if (typeof content === 'string') {
+			text: function (content = null) {
+				if (content !== null) {
 					setContentText(content);
 				}
 				else return bodytext.attr('text')[0];
@@ -157,7 +158,7 @@ lve.window.dialog = function (title, content, option = {}) {
 		});
 
 		titletext.addClass('__lve.window.toolbar.text__');
-		titletext.css({ width: width - (padding * 2), fontSize: 15, color: windowconfig.frameColor, position: 'fixed', pointerEvents: 'none' });
+		titletext.css({ width: width - (padding * 2), fontSize: windowconfig.fontSize, fontFamily: windowconfig.fontFamily, color: windowconfig.frameColor, position: 'fixed', pointerEvents: 'none' });
 		titletext.follow(toolbar, { left: padding, bottom: 7, perspective: -0.000001 });
 
 
@@ -177,7 +178,7 @@ lve.window.dialog = function (title, content, option = {}) {
 		closetext.follow(closebtn, { left: 12.5, bottom: 7, perspective: -0.000001 });
 
 		bodytext.addClass('__lve.window.body.text__');
-		bodytext.css({ width: width - (padding * 2), fontSize: windowconfig.contentFontSize, lineHeight: windowconfig.lineHeight, position: 'fixed', pointerEvents: 'none' });
+		bodytext.css({ width: width - (padding * 2), fontSize: windowconfig.fontSize, fontFamily: windowconfig.fontFamily, lineHeight: windowconfig.lineHeight, position: 'fixed', pointerEvents: 'none' });
 		bodytext.follow(toolbar, {
 			left: padding,
 			perspective: -0.000001,
