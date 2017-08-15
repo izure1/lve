@@ -12,22 +12,20 @@ lve.js는 html5의 canvas로 구현 가능한 비주얼노벨 엔진입니다.
 
 ## 기본 사용법 - 설정하기
 ```javascript
-window.onload = function(){
-    lve.init({
-        canvas: document.getElementById('myCanvas'), // 보여줄 캔버스를 설정합니다. 필수 항목
-        scaleDistance: 100, // 객체가 정상적인 크기로 보일 Perspective입니다. 이 수치보다 Perspective가 적을 시 더 크게 보입니다. 기본값은 100입니다
-        disappearanceSight: undefined, // 시야 거리입니다. 객체와 현재 카메라의 perspective 차이가 이 수치보다 클 경우, 캔버스에 그리지 않습니다. 이는 최적화 용도로 사용됩니다. 기본값은 undefined입니다.
-        disappearanceSize: 0.35, // 객체의 perspective로 인해 크기가 이 수치보다 작아보일 때, 캔버스에 그리지 않습니다. 이는 최적화 용도로 사용됩니다. 기본값은 0.35입니다.
-        frameLimit: 60, // 초당 프레임 제한을 설정합니다. 기본값은 60입니다
-        backgroundColor: "white", // 캔버스 배경 색상을 설정합니다. 기본 white
-    });
-};
+lve.init({
+  canvas: '#myCanvas', // 보여줄 캔버스를 설정합니다. 필수 항목
+  scaleDistance: 100, // 객체가 정상적인 크기로 보일 Perspective입니다. 이 수치보다 Perspective가 적을 시 더 크게 보입니다. 기본값은 100입니다
+  disappearanceSight: undefined, // 시야 거리입니다. 객체와 현재 카메라의 perspective 차이가 이 수치보다 클 경우, 캔버스에 그리지 않습니다. 이는 최적화 용도로 사용됩니다. 기본값은 undefined입니다.
+  disappearanceSize: 0.35, // 객체의 perspective로 인해 크기가 이 수치보다 작아보일 때, 캔버스에 그리지 않습니다. 이는 최적화 용도로 사용됩니다. 기본값은 0.35입니다.
+  frameLimit: 60, // 초당 프레임 제한을 설정합니다. 기본값은 60입니다
+  backgroundColor: "white", // 캔버스 배경 색상을 설정합니다. 기본 white
+});
 ```
 ### 좀 더 간단히...
 
 ```javascript
 lve.init({
-    canvas: document.getElementById('myCanvas')
+    canvas: '#myCanvas'
 });
 ```
 
