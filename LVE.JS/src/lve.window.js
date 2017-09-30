@@ -9,7 +9,7 @@
 'use strict';
 
 lve.window = {};
-lve.window.version = '1.0.2';
+lve.window.version = '1.0.3';
 lve.window.dialogs = [];
 lve.window.config = {
 	window: {
@@ -113,7 +113,7 @@ lve.window.dialog = function (title, content, option = {}) {
 
 
 		// frame setting
-		frame.addClass('__lve.window.frame__');
+		frame.addClass('__lve.window.frame__ __lve.window__');
 		frame.on('mousedown', function (e) { e.target.emit('focus') });
 		frame.on('focus', function (e) {
 			lve('__lve.window__').findClass('__lve.window.frame__').emit('blur');
@@ -143,7 +143,7 @@ lve.window.dialog = function (title, content, option = {}) {
 		const padding = 10;
 		const realWidth = width - (padding * 2);
 
-		toolbar.addClass('__lve.window.toolbar__');
+		toolbar.addClass('__lve.window.toolbar__ __lve.window__');
 		toolbar.css({ width: width, height: toolbarheight, color: windowconfig.defaultColor, position: 'fixed' });
 		toolbar.follow(frame, {
 			left: 0,
@@ -157,13 +157,13 @@ lve.window.dialog = function (title, content, option = {}) {
 			lve.window.cache.activeWindow.emit('focus');
 		});
 
-		titletext.addClass('__lve.window.toolbar.text__');
+		titletext.addClass('__lve.window.toolbar.text__ __lve.window__');
 		titletext.css({ width: width - (padding * 2), fontSize: windowconfig.fontSize, fontFamily: windowconfig.fontFamily, color: windowconfig.frameColor, position: 'fixed', pointerEvents: 'none' });
 		titletext.follow(toolbar, { left: padding, bottom: 7, perspective: -0.000001 });
 
 
 		// button setting
-		closebtn.addClass('__lve.window.button__');
+		closebtn.addClass('__lve.window.button__ __lve.window__');
 		closebtn.css({ width: 25, height: 25, color: 'transparent', position: 'fixed' });
 		closebtn.follow(toolbar, { left: width - 25, bottom: 0, perspective: -0.000001 });
 		closebtn.on('mouseover mouseout', function (e) {
@@ -174,10 +174,11 @@ lve.window.dialog = function (title, content, option = {}) {
 			modal.close();
 		});
 
+		closetext.addClass('__lve.window.text__ __lve.window__');
 		closetext.css({ fontSize: 15, color: windowconfig.frameColor, textAlign: 'center', position: 'fixed', pointerEvents: 'none' });
 		closetext.follow(closebtn, { left: 12.5, bottom: 7, perspective: -0.000001 });
 
-		bodytext.addClass('__lve.window.body.text__');
+		bodytext.addClass('__lve.window.body.text__ __lve.window__');
 		bodytext.css({ width: width - (padding * 2), fontSize: windowconfig.fontSize, fontFamily: windowconfig.fontFamily, lineHeight: windowconfig.lineHeight, position: 'fixed', pointerEvents: 'none' });
 		bodytext.follow(toolbar, {
 			left: padding,
@@ -230,7 +231,7 @@ lve.window.dialog = function (title, content, option = {}) {
 		// create horizon
 		const hr = lve('__lve.window__').create({ type: 'square', scene: scene });
 
-		hr.addClass('__lve.window.body.horizon__');
+		hr.addClass('__lve.window.body.horizon__ __lve.window__');
 		hr.css({ width: realWidth, height: .5, color: windowconfig.frameBorderColor, position: 'fixed' });
 
 		// create buttons
@@ -260,18 +261,19 @@ lve.window.dialog = function (title, content, option = {}) {
 			const item = option.buttons[i];
 			const
 				button = lve('__lve.window__').create({ type: 'square', scene: scene }),
-				buttontext = lve('__lve.window__').create({ type: 'text', text: item.text });
+				buttontext = lve('__lve.window__').create({ type: 'text', text: item.text, scene: scene });
 
-			buttontext.css({ fontSize: 13, color: windowconfig.frameColor, textAlign: 'center', position: 'fixed' });
+			buttontext.addClass('__lve.window__');
+			buttontext.css({ fontSize: 13, color: windowconfig.frameColor, textAlign: 'center', position: 'fixed', zIndex: 1, pointerEvents: 'none' });
 			buttontext.measureText();
 			buttontext.follow(button, {
 				bottom: 10,
-				perspective: -0.000001,
 				left: function () {
 					return button.width()[0] / 2
 				}
 			});
 
+			button.addClass('__lve.window__');
 			button.css({
 				width: (buttontext.width()[0] + buttonPadding), height: buttonHeight,
 				color: windowconfig.defaultColor,

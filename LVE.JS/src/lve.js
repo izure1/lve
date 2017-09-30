@@ -23,9 +23,61 @@
 
 var lve = new Lve();
 function Lve() {
+
+
+	/*
+	 *  LveJSHashTable
+	 *
+	 *  생성된 객체들은 이곳에 검색 키워드(selector)가 저장됩니다.
+	 *  해시 테이블은 검색 키워드 관리를 좀 더 수월하게 도와주며, 사용자에게 큰 의미는 없습니다.
+	 *
+	 *  각 LveJS 월드마다 각각의 해시 테이블을 가집니다. 해시 테이블은 월드 간 공유되지 않습니다.
+	 *
+	 */
+
+	class LveJSHashTable {
+		constructor() {
+			this.table = {};
+		}
+		insert(name, item) {
+			if (name in this.table === false) {
+				this.table[name] = [];
+			}
+			if (this.select(name, (selected) => { return selected === item }).length) return;
+			this.table[name].push(item);
+		}
+		select(name, filter = () => { return true }) {
+			if (name in this.table === false) {
+				this.table[name] = [];
+			}
+			return this.table[name].filter(filter);
+		}
+		update(name, news, filter = () => { return true }) {
+			if (name in this.table === false) {
+				this.table[name] = [];
+			}
+			const lists = this.table[name].filter(filter);
+			for (const item of lists) {
+				this.insert(news, item);
+				this.delete(name, (selected) => { return selected === item });
+			}
+		}
+		delete(name, filter = () => { return true }) {
+			if (name in this.table === false) return;
+			let i = this.table[name].length;
+			while (i--) {
+				const match = filter(this.table[name][i]);
+				if (match) {
+					this.table[name].splice(i, 1);
+				}
+			}
+			if (this.table[name].length === 0) delete this.table[name];
+		}
+	}
+
 	var lve = (name) => {
-		// Ex. lve()
-		if (!name) return;
+
+		name = name || {};
 
 		const
 			root = lve.root,
@@ -50,15 +102,19 @@ function Lve() {
 					break;
 				}
 				case '[USING_CAMERA]': {
-					retArr = [usingCamera];
+					if (lve.instanceof(usingCamera)) {
+						retArr = [usingCamera];
+					}
 					break;
 				}
 				case '[using_camera]': {
-					retArr = [usingCamera];
+					if (lve.instanceof(usingCamera)) {
+						retArr = [usingCamera];
+					}
 					break;
 				}
 				default: {
-					retArr = cache.selectorKeyword[name];
+					retArr = cache.hashTable.select(name);
 					break;
 				}
 			}
@@ -68,14 +124,21 @@ function Lve() {
 		 */
 		else {
 			// session으로 검색했을 때
-			if (name.context) {
+			if ('context' in name) {
 				retArr = name.context;
 				name = name.name;
 			}
-			// 객체로 검색했을 때
 			else {
-				retArr = [name];
-				name = name.name;
+				// 객체로 검색했을 때
+				if (lve.instanceof(name) === true) {
+					retArr = [name];
+					name = name.name;
+				}
+				// 그 외 잘못된 검색
+				else {
+					retArr = null;
+					name = null;
+				}
 			}
 		}
 
@@ -98,7 +161,19 @@ function Lve() {
 		objects: [], // 객체정보배열. 생성된 객체들은 이 배열에 style.perspective 속성값에 따라 내림차순으로 정렬됩니다.
 		initSetting: { // 전역 설정. 객체에 지역설정이 되지 않았을 경우, 이 전역 설정을 따릅니다.
 			canvas: {},
-			scaleDistance: 100
+			scaleDistance: 100,
+			get minSight() {
+				return this.disappearanceSight;
+			},
+			set minSight(value) {
+				this.disappearanceSight = value;
+			},
+			get minSize() {
+				return this.disappearanceSize;
+			},
+			set minSize(value) {
+				this.disappearanceSize = value;
+			}
 		}, // 초기 설정
 		isStart: false, // 게임이 실행됐는지 알 수 있습니다.
 		isRunning: true, // 게임이 실행 중인지 알 수 있습니다. lve.play, lve.pause 함수에 영향을 받습니다.
@@ -122,19 +197,22 @@ function Lve() {
 		globalEventKeyword: {},
 		physicsBodyArr: [], // physicsBody가 등록된 객체들
 		physicsPerspective: {}, // physicsBody가 등록된 객체의 perspective 정보가 담기는 구조체.
-		selectorKeyword: {}, // 선택자. 객체 생성시 name을 키값으로 저장됩니다.
+		hashTable: new LveJSHashTable(),
+		selectorKeyword: null, // 선택자. 객체 생성시 name을 키값으로 저장됩니다.
 		objectArr: [], // 캐싱된 객체들이 이곳에 저장되어, lve.root.fn.update 메서드 호출시 순회합니다.
 		mouseoverItem: null, // 현재 mouseover 되어있는 객체가 저장됩니다.
 		isNeedSort: 0, isNeedCaching: 0,
 		screenScale: 1,
+		screenElement: null,
 		loseTime: 0, // lve.pause, lve.play 등으로 멈추었던 총 interval timestamp가 저장됩니다.
 		lastDraw: 0, // 마지막으로 캔버스에 그려졌던 timestamp가 이곳에 저장됩니다.
 		now: 0, fps: 0, // 현재 fps값이 프레임마다 갱신되어 저장됩니다.
 		pauseTime: 0, // 마지막으로 lve.pause가 되었던 timestamp가 저장됩니다.
 		primary: 1
 	};
+	lve.root.cache.selectorKeyword = lve.root.cache.hashTable.table;
 	lve.root.const = {
-		get version() { return '2.9.0' },
+		get version() { return '2.9.1' },
 		get radian() { return Math.PI / 180 },
 		get arr_type() {
 			// 사용할 수 있는 객체 유형 선언
@@ -411,15 +489,42 @@ function Lve() {
 				} catch (e) { fn.getTextWidth.call(this) };
 			};
 			initor.insertKeyword = () => {
-				if (cache.selectorKeyword[this.name] === undefined) {
-					cache.selectorKeyword[this.name] = [];
-				}
-				cache.selectorKeyword[this.name].push(this);
-				cache.selectorKeyword[`[PRIMARY=${this.primary}]`] = [this];
-				cache.selectorKeyword[`[primary=${this.primary}]`] = [this];
+				cache.hashTable.insert(this.name, this);
+				cache.hashTable.insert(`[PRIMARY=${this.primary}]`, this);
+				cache.hashTable.insert(`[primary=${this.primary}]`, this);
 			};
 
-			this.primary = cache.primary++;
+			const self = this;
+			let __element__ = {};
+			let __name__ = this.name;
+			const __primary__ = cache.primary++;
+
+			// immutability attributes
+			Object.defineProperties(this, {
+				name: {
+					enumerable: true,
+					set: function (value) {
+						cache.hashTable.update(__name__, value, (selected) => {
+							return selected === self;
+						});
+						__name__ = value;
+					},
+					get: function () {
+						return __name__;
+					}
+				},
+				primary: {
+					enumerable: true,
+					set: function () { },
+					get: function () { return __primary__ }
+				},
+				element: {
+					enumerable: true,
+					set: function (val) { __element__ = val },
+					get: function () { return __element__ }
+				}
+			});
+
 			this.type = data.type.toLowerCase();
 			this.scene = data.scene || 'main';
 			this.src = data.src;
@@ -428,6 +533,7 @@ function Lve() {
 			this.timescale = data.timescale !== undefined ? data.timescale : 1;
 			this.physicsBody = false;
 			this.className = data.className !== undefined ? data.className : '';
+			this.relative = { origin: { left: 0, bottom: 0 } };
 			this.style = {
 				fontSize: 10,
 				fontFamily: 'arial, sans-serif',
@@ -457,10 +563,9 @@ function Lve() {
 				pointerEvents: true,
 				display: 'block',
 				lineHeight: '100%',
-				verticalAlign: 'top'
+				verticalAlign: 'top',
+				zIndex: 0
 			};
-			this.relative = { origin: { left: 0, bottom: 0 } };
-			this.element = {};
 			this.__system__ = {
 				ani_init: { callbacks: [] },
 				follow_init: { follower: [], following: undefined, relative: {} },
@@ -634,6 +739,7 @@ function Lve() {
 									item.style[property] = value;
 									break;
 								}
+								case 'zIndex':
 								case 'perspective': {
 									if (item.type !== 'camera') lve.root.cache.isNeedSort++;
 									item.style[property] = value;
@@ -773,33 +879,38 @@ function Lve() {
 
 					switch (style.gradientType) {
 						case 'linear': {
-							let
-								deg = style.gradientDirection % 360 == 0 ? 1 : style.gradientDirection % 360,
-								men = ~~(deg / 90) % 4,
-								spx = [0, width, width, 0],
-								spy = [0, 0, height, height],
-								sppx = [1, -1, -1, 1],
-								sppy = [1, 1, -1, -1],
+							const rotate = style.gradientDirection;
+							const { width, height } = relative;
+							let x1, x2, y1, y2;
 
-								rad = deg * Math.PI / 180,
+							if (0 <= rotate && rotate < 45) {
+								x1 = 0;
+								y1 = height / 2 * (45 - rotate) / 45;
+								x2 = width;
+								y2 = height - y1;
+							} else if ((45 <= rotate && rotate < 135)) {
+								x1 = width * (rotate - 45) / (135 - 45);
+								y1 = 0;
+								x2 = width - x1;
+								y2 = height;
+							} else if ((135 <= rotate && rotate < 225)) {
+								x1 = width;
+								y1 = height * (rotate - 135) / (225 - 135);
+								x2 = 0;
+								y2 = height - y1;
+							} else if ((225 <= rotate && rotate < 315)) {
+								x1 = width * (1 - (rotate - 225) / (315 - 225));
+								y1 = height;
+								x2 = width - x1;
+								y2 = 0;
+							} else if (315 <= rotate) {
+								x1 = 0;
+								y1 = height - height / 2 * (rotate - 315) / (360 - 315);
+								x2 = width;
+								y2 = height - y1;
+							}
 
-								sin = Math.sin(rad),
-								cos = Math.cos(rad),
-								abs = Math.abs;
-
-							let
-								rs = height / sin,
-								px = abs(rs * cos),
-								rd = (width - px) * px / rs,
-								r = rs + rd;
-
-							let
-								x0 = spx[men],
-								y0 = spy[men],
-								x1 = x0 + abs(r * cos) * sppx[men],
-								y1 = y0 + abs(r * sin) * sppy[men];
-
-							grd = ctx.createLinearGradient(x0 + relative.left + textAlign_fix, y0 + relative.bottom, x1 + relative.left + textAlign_fix, y1 + relative.bottom);
+							grd = ctx.createLinearGradient(x1 + relative.left + textAlign_fix, y1 + relative.bottom, x2 + relative.left + textAlign_fix, y2 + relative.bottom);
 							break;
 						}
 						case 'radial': {
@@ -827,11 +938,11 @@ function Lve() {
 					return grd;
 				};
 
-			const disappearanceSight = usingCamera.disappearanceSight || initSetting.disappearanceSight;
+			const minSight = usingCamera.minSight || initSetting.minSight;
 			relative.perspective = style.perspective - usingCamera.style.perspective;
 
-			if (disappearanceSight) {
-				relative.opacity = style.opacity - (relative.perspective / disappearanceSight);
+			if (minSight) {
+				relative.opacity = style.opacity - (relative.perspective / minSight);
 			}
 			else relative.opacity = style.opacity;
 
@@ -880,7 +991,7 @@ function Lve() {
 
 			const
 				scaleDistance = usingCamera.scaleDistance || initSetting.scaleDistance,
-				disappearanceSize = usingCamera.disappearanceSize || initSetting.disappearanceSize;
+				minSize = usingCamera.minSize || initSetting.minSize;
 
 			/*  캔버스 image, sprite, text타입
 			 *  width:auto, height:auto 처리
@@ -1023,9 +1134,9 @@ function Lve() {
 			//if (relative.height >= canvas_elem.height * 50) return; // 캔버스 높이보다 매우 클 경우
 			if (relative.width <= 0) return; // width가 0보다 작을 때
 			if (relative.height <= 0) return; // height가 0보다 작을 때
-			if (relative.width < disappearanceSize) return; // width가 소멸크기보다 작음
-			if (relative.height < disappearanceSize) return; // height가 소멸크기보다 작음
-			if (disappearanceSight !== undefined && relative.perspective > disappearanceSight) return; // 소멸거리 지정 시 소멸거리보다 멀리있음
+			if (relative.width < minSize) return; // width가 소멸크기보다 작음
+			if (relative.height < minSize) return; // height가 소멸크기보다 작음
+			if (minSight !== undefined && relative.perspective > minSight) return; // 소멸거리 지정 시 소멸거리보다 멀리있음
 
 			this.__system__.drawing = true;
 
@@ -1204,7 +1315,9 @@ function Lve() {
 			const
 				vars = lve.root.vars, cache = lve.root.cache,
 				usingCamera = vars.usingCamera,
-				tarCamera = this.context ? this.context[0] : this;
+				tarCamera = this.get(0);
+
+			if (!tarCamera) return this;
 
 			// 아직 카메라가 설정되지 않았을 경우
 			if (!lve.root.fn.checkCamera()) {
@@ -1307,7 +1420,7 @@ function Lve() {
 					tarObj = selectObj.get(0);
 				}
 				else {
-					tarObj = lve.root.cache.selectorKeyword[selectObj];
+					tarObj = lve.root.cache.hashTable.select(selectObj);
 					if (!tarObj) return;
 					if (tarObj.length > 0) {
 						tarObj = tarObj[0];
@@ -1370,7 +1483,7 @@ function Lve() {
 			if (lve.instanceof(tarObj)) {
 				kickTars = tarObj.context || [tarObj];
 			}
-			else kickTars = lve.root.cache.selectorKeyword[tarObj] || [];
+			else kickTars = lve.root.cache.hashTable.select(tarObj) || [];
 
 			const work = (item) => {
 				for (let follower of item.__system__.follow_init.follower) {
@@ -1506,7 +1619,7 @@ function Lve() {
 
 			const
 				vars = lve.root.vars, cache = lve.root.cache,
-				objects = vars.objects, keywords = cache.selectorKeyword,
+				objects = vars.objects,
 				canvas = vars.initSetting.canvas.element;
 
 			const work = (item) => {
@@ -1536,15 +1649,17 @@ function Lve() {
 				}
 
 				objects.splice(objects.indexOf(item), 1);
-				keywords[item.name].splice(keywords[item.name].indexOf(item), 1);
+				lve.root.cache.hashTable.delete(item.name, (selected) => {
+					return selected === item;
+				});
 				// if camera object
 				if (item == vars.usingCamera) {
 					vars.usingCamera = {};
 				}
 
 				// 키워드 삭제
-				delete keywords[`[PRIMARY=${item.primary}]`];
-				delete keywords[`[primary=${item.primary}]`];
+				lve.root.cache.hashTable.delete(`[PRIMARY=${item.primary}]`);
+				lve.root.cache.hashTable.delete(`[primary=${item.primary}]`);
 
 				// 자식 요소 삭제
 				if (!isInclude) return;
@@ -1562,12 +1677,6 @@ function Lve() {
 			}
 			else {
 				work(this);
-			}
-			// 해당 키워드의 모든 객체가 삭제되었을 경우
-			// 해당 키워드 삭제
-			if (keywords.hasOwnProperty(this.name)) {
-				if (keywords[this.name].length) return;
-				delete keywords[this.name];
 			}
 
 			lve.root.cache.isNeedCaching++;
@@ -2099,22 +2208,23 @@ function Lve() {
 
 		// >= v2.0.3
 		from(originObj) {
-			let
-				tarObj,
-				retObj = { name: this.name, context: [] };
+			let tarObj;
+			let retObj = { name: this.name, context: [] };
 
 			if (originObj === undefined) return;
 			if (lve.instanceof(originObj)) {
 				if (originObj.context) {
 					tarObj = originObj.context;
 				}
-				else {
-					tarObj = [originObj];
-				}
+				else tarObj = [originObj];
 			}
 			else {
-				tarObj = lve.root.cache.selectorKeyword[originObj];
+				tarObj = lve.root.cache.hashTable.select(originObj);
+				if (tarObj.length === 0) {
+					tarObj = null;
+				}
 			}
+
 			if (!tarObj) return;
 
 			for (let i = 0, len_i = tarObj.length; i < len_i; i++) {
@@ -2463,7 +2573,11 @@ function Lve() {
 		if (cache.isNeedSort) {
 			cache.isNeedSort = 0;
 			cache.objectArr.sort((a, b) => {
-				return parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
+				let perspGap = parseFloat(a.style.perspective) - parseFloat(b.style.perspective);
+				if (perspGap === 0) {
+					perspGap = parseFloat(b.style.zIndex) - parseFloat(a.style.zIndex);
+				}
+				return perspGap;
 			});
 			lve.root.fn.updatePhysicsPerspective();
 		}
@@ -2562,7 +2676,7 @@ function Lve() {
 				// style.perspective 값이 변경되었을 시
 				// isNeedSort 설정
 				if (
-					j === 'perspective' &&
+					j === 'perspective' || j === 'zIndex' &&
 					item_ani_tar != item_ani_origin[j] &&
 					item_ani_count[j] < item_ani_countMax_item
 				) {
@@ -3192,8 +3306,8 @@ function Lve() {
 	/* lve.js 함수
 	 *
 	 * 이곳에서 전역설정한 설정은, 각 객체마다 지역설정보다 우선하지 않습니다
-	 * 예를 들어, 전역설정으로 disappearanceSight를 10으로 설정했고,
-	 * 'TEST1'이라는 카메라 객체의 disappearanceSight를 15로 설정했을 시, 'TEST1' 카메라의 설정이 우선됩니다
+	 * 예를 들어, 전역설정으로 minSight를 10으로 설정했고,
+	 * 'TEST1'이라는 카메라 객체의 minSight를 15로 설정했을 시, 'TEST1' 카메라의 설정이 우선됩니다
 	 *
 	 * 그 외, 객체에 지역설정이 되어있지 않을 시, 전역설정을 따릅니다
 	 */
@@ -3214,10 +3328,14 @@ function Lve() {
 			data = lve.root.fn.adjustJSON(rawdata, initSetting);
 
 		initSetting.scaleDistance = data.scaleDistance !== undefined ? data.scaleDistance : initSetting.scaleDistance; // 객체과의 일반적 거리
-		initSetting.disappearanceSize = data.disappearanceSize !== undefined ? data.disappearanceSize : initSetting.disappearanceSize ? initSetting.disappearanceSize : 0.35; // 소멸 크기
-		initSetting.disappearanceSight = data.disappearanceSight !== undefined ? data.disappearanceSight + initSetting.scaleDistance : undefined; // 소멸 시야
 		initSetting.frameLimit = data.frameLimit !== undefined ? data.frameLimit : initSetting.frameLimit ? initSetting.frameLimit : 60; // 프레임 제한
 		initSetting.backgroundColor = data.backgroundColor !== undefined ? data.backgroundColor : initSetting.backgroundColor ? initSetting.backgroundColor : 'white'; // 캔버스 배경색
+		// TODO : deprecated
+		initSetting.disappearanceSize = data.disappearanceSize !== undefined ? data.disappearanceSize : initSetting.disappearanceSize ? initSetting.disappearanceSize : 0.35; // 소멸 크기
+		initSetting.disappearanceSight = data.disappearanceSight !== undefined ? data.disappearanceSight + initSetting.scaleDistance : undefined; // 소멸 시야
+		// new properties
+		initSetting.minSize = data.minSize !== undefined ? data.minSize : initSetting.minSize ? initSetting.minSize : 0.35; // 소멸 크기
+		initSetting.minSight = data.minSight !== undefined ? data.minSight + initSetting.scaleDistance : undefined; // 소멸 시야
 		// 필수 선언
 		// 이는 객체의 지역설정으로 쓰일 수 없음
 		if (data.canvas) {
@@ -3354,15 +3472,14 @@ function Lve() {
 		return lve;
 	};
 
-	lve.fullScreen = lve.fullscreen = (extend) => {
-
+	lve.fullScreen = lve.fullscreen = (extend, elem) => {
+		if (typeof elem === 'string') elem = document.querySelector(elem);
 		// 캔버스 이벤트 등록
-		const
-			canvas_elem = lve.root.vars.initSetting.canvas.element,
-			screenScale = [
-				window.screen.width / canvas_elem.width,
-				window.screen.height / canvas_elem.height
-			].sort((a, b) => { return a - b })[0];
+		const canvas_elem = elem || lve.root.vars.initSetting.canvas.element;
+		const screenScale = [
+			window.screen.width / canvas_elem.offsetWidth,
+			window.screen.height / canvas_elem.offsetHeight
+		].sort((a, b) => { return a - b })[0];
 
 		// 이벤트 함수
 		function attachEvent() {
@@ -3370,7 +3487,7 @@ function Lve() {
 			// 현재 전체화면 모드라면
 			if (isFullScreen) {
 				canvas_elem.removeAttribute('data-fullscreen');
-				canvas_elem.removeAttribute('data-fullscreen-extend', true);
+				canvas_elem.removeAttribute('data-fullscreen-extend');
 				if (extend) {
 					canvas_elem.style.transform = '';
 				}
@@ -3378,6 +3495,7 @@ function Lve() {
 				canvas_elem.removeEventListener('webkitfullscreenchange', attachEvent);
 				canvas_elem.removeEventListener('mozscreenchange', attachEvent);
 				canvas_elem.removeEventListener('msscreenchange', attachEvent);
+				lve.root.cache.screenElement = null;
 			}
 			// 진입 시
 			else {
@@ -3388,11 +3506,12 @@ function Lve() {
 					canvas_elem.style.transform = 'scale(' + screenScale + ')';
 					lve.root.cache.screenScale = screenScale;
 				}
+				lve.root.cache.screenElement = canvas_elem;
 			}
 		}
 
 		if (!canvas_elem || canvas_elem.getAttribute('data-fullscreen') == 'true') {
-			return lve;
+			return screenScale;
 		}
 
 		canvas_elem.addEventListener('fullscreenchange', attachEvent);
@@ -3419,13 +3538,13 @@ function Lve() {
 			}
 		}
 
-		return lve;
+		return screenScale;
 	};
 
 	// >= 2.8.0
 	lve.exitFullScreen = lve.exitFullscreen = (extend) => {
 
-		const canvas_elem = lve.root.vars.initSetting.canvas.element;
+		const canvas_elem = lve.root.cache.screenElement;
 		if (!canvas_elem || canvas_elem.getAttribute('data-fullscreen') != 'true') {
 			return lve;
 		}
@@ -3450,6 +3569,7 @@ function Lve() {
 		}
 
 		lve.root.cache.screenScale = 1;
+		lve.root.cache.screenElement = null;
 		return lve;
 	};
 
@@ -3629,6 +3749,32 @@ function Lve() {
 	// >= 2.8.1
 	lve.instanceof = (item) => {
 		return item instanceof LveJSObjectSession;
+	};
+
+	// lve.capture
+	// >= 2.9.1
+	lve.capture = (opt = null) => {
+		const gameCanvas = lve.root.vars.initSetting.canvas.element;
+		const newCanvas = document.createElement('canvas');
+		const scale = gameCanvas.width / gameCanvas.height;
+
+		const { type, quality } = (opt || {});
+
+		if (opt) {
+			newCanvas.width = opt.width || opt.height * scale;
+			newCanvas.height = opt.height || opt.width / scale;
+			if (Object.keys(opt).length === 0) {
+				newCanvas.width = gameCanvas.width;
+				newCanvas.height = gameCanvas.height;
+			}
+		}
+		else {
+			newCanvas.width = gameCanvas.width;
+			newCanvas.height = gameCanvas.height;
+		}
+
+		newCanvas.getContext('2d').drawImage(gameCanvas, 0, 0, newCanvas.width, newCanvas.height);
+		return newCanvas.toDataURL(type, quality);
 	};
 
 	if (this instanceof Lve) {

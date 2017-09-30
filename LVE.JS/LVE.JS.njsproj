@@ -33,12 +33,19 @@
   <ItemGroup>
     <Content Include="README.md" />
     <Content Include="Sample\Performance tester\HTML.html" />
+    <Content Include="src\Sample\effects\sample.html" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="typings\index.d.ts" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Sample\Performance tester\JavaScript.js" />
+    <Compile Include="src\lve.effect.js">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="src\Sample\effects\JavaScript1.js">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="src\Sample\Window interface\lve.window.js" />
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +53,7 @@
     <Folder Include="Sample\Performance tester\" />
     <Folder Include="src\" />
     <Folder Include="src\Sample\" />
+    <Folder Include="src\Sample\Effects\" />
     <Folder Include="src\Sample\Window interface\" />
     <Folder Include="typings\" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE HTML>
+<!DOCTYPE HTML>
 <html>
 <head>
 	<title>인루브리듬!</title>
@@ -9,6 +9,7 @@
 	<script type="text/javascript" src="./js/music/canon_rock_2.js"></script>
 	<script type="text/javascript" src="./js/music/starttime.js"></script>
 	<script type="text/javascript" src="./js/music/sweet_devil.js"></script>
+	<script type="text/javascript" src="./js/music/hello.js"></script>
 	<script type="text/javascript">
 		var nowStage;
 
@@ -419,7 +420,7 @@
 		}
 
 		function start() {
-			var musicName = "sweet_devil",
+			var musicName = "hello",
 				musics = nowStage.music = new Audio("./mp3/" + musicName + ".mp3");
 
 			musics.addEventListener("loadstart", function () {
